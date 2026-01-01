@@ -1,0 +1,9 @@
+{
+	"watch": ["*.mjs", "domains/**/*.mjs"],
+	"ignore": ["node_modules/**"],
+	"ext": "mjs,json",
+	"delay": "1000",
+	"env": {
+		"NODE_ENV": "development"
+	}
+}

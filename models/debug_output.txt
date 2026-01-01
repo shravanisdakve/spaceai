@@ -1,0 +1,20 @@
+Starting Finance API on port 8000...
+Skipping Mathematics API - main.py not found
+Skipping Programming API - main.py not found
+Skipping Psychology API - main.py not found
+Skipping Physics API - main.py not found
+Skipping Chemistry API - main.py not found
+Skipping Biology API - main.py not found
+Skipping Legal API - main.py not found
+Skipping Marketing API - main.py not found
+Skipping UI-UX_Design API - main.py not found
+Skipping Product_Management API - main.py not found
+Skipping Music API - main.py not found
+Skipping Art_Style API - main.py not found
+Skipping Philosophy_Ethics API - main.py not found
+Skipping Cybersecurity API - main.py not found
+Skipping Data_Science API - main.py not found
+Skipping Productivity API - main.py not found
+Skipping Mental_Health API - main.py not found
+All APIs have been started. You can check their status using 'ps aux | grep python'
+To stop all APIs, use 'pkill -f main.py'
