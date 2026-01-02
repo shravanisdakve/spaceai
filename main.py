@@ -35,10 +35,11 @@ app.add_middleware(
 # --- 1. DYNAMIC TUTOR LOADING LOGIC ---
 MODELS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
 AVAILABLE_TUTORS = {}
+AVAILABLE_ANALYSIS_SERVICES = {}
 
-def load_tutor_profiles():
-    """Scans the /models directory and loads all valid tutor configurations."""
-    logger.info(f"📂 Loading tutor profiles from {MODELS_DIR}...")
+def load_models():
+    """Scans the /models directory and loads all valid tutor configurations and analysis services."""
+    logger.info(f"📂 Loading models from {MODELS_DIR}...")
     
     # Ensure the directory exists
     if not os.path.exists(MODELS_DIR):
@@ -46,23 +47,54 @@ def load_tutor_profiles():
         return
 
     # Add to path so we can import them
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    # Ensure that `models` directory itself is in sys.path
+    models_parent_dir = os.path.dirname(MODELS_DIR)
+    if models_parent_dir not in sys.path:
+        sys.path.append(models_parent_dir)
 
-    for _, name, _ in pkgutil.iter_modules([MODELS_DIR]):
+    for _, name, ispkg in pkgutil.iter_modules([MODELS_DIR]):
         try:
-            # Import the module (e.g., models.math)
-            module = importlib.import_module(f"models.{name}")
-            
-            # Check if it has the required MODEL_CONFIG dictionary
-            if hasattr(module, "MODEL_CONFIG"):
-                config = module.MODEL_CONFIG
-                AVAILABLE_TUTORS[config["id"]] = config
-                logger.info(f"✅ Loaded Tutor: {config['display_name']} ({name}.py)")
+            # For directories like 'Art_Style', 'Biology', etc.
+            if ispkg: # Treat as a package if it's a directory
+                module_path = f"models.{name}.main" # Assume main.py inside each domain folder
+                module = importlib.import_module(module_path)
+                
+                # Load MODEL_CONFIG for chat tutors
+                if hasattr(module, "MODEL_CONFIG"):
+                    config = module.MODEL_CONFIG
+                    AVAILABLE_TUTORS[config["id"]] = config
+                    logger.info(f"✅ Loaded Tutor Config: {config['display_name']} ({module_path}.py)")
+
+                # Load analyze_text function for analysis services
+                if hasattr(module, "analyze_text"):
+                    # Use a consistent ID for analysis services, e.g., 'art_style', 'cybersecurity'
+                    # Convert 'Art_Style' to 'art_style'
+                    analysis_id = name.lower() 
+                    AVAILABLE_ANALYSIS_SERVICES[analysis_id] = module.analyze_text
+                    logger.info(f"✅ Loaded Analysis Service: {analysis_id} ({module_path}.py)")
+
+            # For individual .py files directly in models/ (e.g., general.py, math.py)
+            else: 
+                module_path = f"models.{name}"
+                module = importlib.import_module(module_path)
+
+                # Load MODEL_CONFIG for chat tutors
+                if hasattr(module, "MODEL_CONFIG"):
+                    config = module.MODEL_CONFIG
+                    AVAILABLE_TUTORS[config["id"]] = config
+                    logger.info(f"✅ Loaded Tutor Config: {config['display_name']} ({module_path}.py)")
+
+                # Load analyze_text function for analysis services
+                if hasattr(module, "analyze_text"):
+                    analysis_id = name.lower()
+                    AVAILABLE_ANALYSIS_SERVICES[analysis_id] = module.analyze_text
+                    logger.info(f"✅ Loaded Analysis Service: {analysis_id} ({module_path}.py)")
+
         except Exception as e:
             logger.error(f"❌ Failed to load model {name}: {str(e)}")
 
 # Initialize on startup
-load_tutor_profiles()
+load_models()
 
 
 # --- 2. DATA MODELS ---
@@ -167,32 +199,29 @@ def is_cybersecurity_related(text: str) -> tuple[bool, float]:
 
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze_text(request: TextRequest):
-    # Placeholder for your existing analyze_text implementation:
-    # You need to ensure your actual implementation for this function is here.
-    # This dummy implementation assumes the original analyze_text function
-    # would make calls to an LLM for summarization, roadmap generation etc.
+    logger.info(f"Received analysis request for domain: {request.domain}")
+
+    domain_id = request.domain.lower().replace(" ", "_").replace("-", "_") if request.domain else "general"
     
-    # Determine if text is cybersecurity related
-    is_cs, confidence = is_cybersecurity_related(request.text)
+    analysis_function = AVAILABLE_ANALYSIS_SERVICES.get(domain_id)
 
-    summary_text = f"Summary of {request.text[:50]}..."
-    roadmap_text = "Roadmap to understand the text..."
-    key_concepts_list = ["concept1", "concept2"]
-    difficulty = "Medium"
+    if not analysis_function:
+        logger.warning(f"⚠️ No analysis function found for domain: {request.domain}. Falling back to general analysis.")
+        analysis_function = AVAILABLE_ANALYSIS_SERVICES.get("general") # Fallback to general if domain not found
+        if not analysis_function:
+            raise HTTPException(status_code=404, detail=f"No analysis service found for domain '{request.domain}' and no general fallback is available.")
 
-    if is_cs:
-        summary_text = "This text is related to cybersecurity. " + summary_text
-        roadmap_text = "Cybersecurity specific roadmap. " + roadmap_text
-        key_concepts_list.append("Cybersecurity specific concept")
-
-    return AnalysisResponse(
-        summary=summary_text,
-        roadmap=roadmap_text,
-        key_concepts=key_concepts_list,
-        difficulty_level=difficulty,
-        is_cybersecurity_domain=is_cs,
-        domain_confidence=confidence
-    )
+    try:
+        # Call the dynamically loaded analyze_text function
+        # Ensure the signature matches (request: TextRequest)
+        response = await analysis_function(request)
+        return response
+    except HTTPException as he:
+        logger.error(f"❌ HTTP Exception during analysis for domain {request.domain}: {he.detail}")
+        raise he
+    except Exception as e:
+        logger.error(f"❌ Error during analysis for domain {request.domain}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing analysis request: {str(e)}")
 
 
 if __name__ == "__main__":
