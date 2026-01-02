@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:8020';
+import { apiFetch } from './api/api';
 
 export interface TutorProfile {
     id: string;
@@ -8,13 +8,12 @@ export interface TutorProfile {
 }
 
 export const getTutors = async (): Promise<TutorProfile[]> => {
-    const res = await fetch(`${API_BASE}/api/tutors`);
+    const res = await apiFetch('/api/tutors');
     return res.json();
 };
 
 export const streamLocalChat = async (messages: any[], tutorId: string) => {
-    // ... same as before, but pass 'tutor_id' in body instead of 'model'
-    const response = await fetch(`${API_BASE}/api/chat`, {
+    const response = await apiFetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -22,11 +21,10 @@ export const streamLocalChat = async (messages: any[], tutorId: string) => {
             tutor_id: tutorId
         })
     });
-    // ... return stream reader (same as previous code)
-    // ...
-    // ...
+    
     if (!response.ok) throw new Error('Network response was not ok');
     if (!response.body) throw new Error('No response body');
+    
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     return {
@@ -41,9 +39,13 @@ export const streamLocalChat = async (messages: any[], tutorId: string) => {
                 for (const line of lines) {
                     if (line.trim()) {
                         try {
+                            // Since the backend stream is now just forwarding, we expect JSON chunks
                             const json = JSON.parse(line);
-                            if (json.text) yield { text: json.text };
-                        } catch (e) {}
+                            yield json;
+                        } catch (e) {
+                            // It's possible to get partial JSON objects, so we just log and continue
+                            console.warn("Could not parse stream chunk:", line, e);
+                        }
                     }
                 }
             }

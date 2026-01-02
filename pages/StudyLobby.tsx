@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { PageHeader, Button, Input } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowRight, PlusCircle, Users } from 'lucide-react';
-import CreateRoomModal from '../components/CreateRoomModal'; // Import the new modal
+import CreateRoomModal from '../components/Modals/CreateRoomModal'; // Import the new modal from new location
 import { getRooms } from '../services/communityService';
 import { getCourses } from '../services/courseService';
 import { type StudyRoom, type Course } from '../types';

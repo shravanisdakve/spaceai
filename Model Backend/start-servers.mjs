@@ -39,7 +39,7 @@ function startServer(domain, ports) {
 		`Starting ${domain} server at ${serverPath} on port ${ports.serverPort}`
 	);
 
-	const server = spawn('npx', ['nodemon', serverPath], {
+	const server = spawn('node', [serverPath], {
 		cwd: domainPath,
 		stdio: 'pipe',
 		env: {
@@ -77,7 +77,7 @@ Object.entries(domains).forEach(([domain, ports]) => {
 
 // Start main router
 console.log('\nStarting main router...');
-const mainRouter = spawn('npx', ['nodemon', 'main-router.mjs'], {
+const mainRouter = spawn('node', ['main-router.mjs'], {
 	stdio: 'pipe',
 	env: {
 		...process.env,

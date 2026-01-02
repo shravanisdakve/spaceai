@@ -34,6 +34,7 @@ export interface Course {
     id: string;
     name: string;
     color: string;
+    createdAt?: any; // Added for Firestore server timestamp
 }
 
 export interface Mood {

@@ -22,16 +22,17 @@ import {
 } from '../services/communityService';
 import { streamStudyBuddyChat, generateQuizQuestion, extractTextFromFile } from '../services/geminiService';
 import { startSession, endSession, recordQuizResult } from '../services/analyticsService';
+import DOMPurify from 'dompurify'; // Import DOMPurify
 // --- REMOVED Clock import here ---
 import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, Smile, FolderOpen, AlertTriangle, Info } from 'lucide-react';
 // --- END REMOVAL ---
 import { Input, Button, Textarea, Spinner } from '../components/ui';
-import RoomControls from '../components/RoomControls'; //
-import VideoTile from '../components/VideoTile';
-import Reactions, { type Reaction } from '../components/Reactions';
-import MusicPlayer from '../components/MusicPlayer';
-import ShareModal from '../components/ShareModal';
-import StudyRoomNotesPanel from '../components/StudyRoomNotesPanel'; // Import the new component
+import RoomControls from '../components/StudyRoom/RoomControls'; //
+import VideoTile from '../components/StudyRoom/VideoTile';
+import Reactions, { type Reaction } from '../components/StudyRoom/Reactions';
+import MusicPlayer from '../components/Common/MusicPlayer'; // NEW
+import ShareModal from '../components/Modals/ShareModal'; // NEW
+import StudyRoomNotesPanel from '../components/StudyRoom/StudyRoomNotesPanel'; // Import the new component from new location
 
 
 // ... (Helper Types & formatElapsedTime function remain the same) ...
@@ -139,9 +140,11 @@ const StudyRoom: React.FC = () => {
             return;
         }
 
+        const sanitizedMessageText = DOMPurify.sanitize(messageText);
+
         const newMessage: ChatMessage = {
             role: 'user',
-            parts: [{ text: messageText }],
+            parts: [{ text: sanitizedMessageText }],
             user: { email: currentUser.email, displayName: currentUser.displayName },
             timestamp: Date.now()
         };
@@ -157,6 +160,7 @@ const StudyRoom: React.FC = () => {
 
      const postSystemMessage = useCallback(async (text: string) => {
         if (!roomId) return;
+        const sanitizedText = DOMPurify.sanitize(text);
         const systemMessage: ChatMessage = {
             role: 'model',
             parts: [{ text }],

@@ -6,6 +6,7 @@ import { type Note, type Course, type Flashcard as FlashcardType } from '../type
 import { PageHeader, Button, Input, Textarea, Select, Modal, Spinner } from '../components/ui';
 import { PlusCircle, Trash2, Upload, FileText, BookOpen, Layers, X, Brain, Edit, Save, ArrowLeft, Download, Eye, EyeOff } from 'lucide-react';
 import { generateFlashcards, extractTextFromFile } from '../services/geminiService';
+import DOMPurify from 'dompurify'; // Import DOMPurify
 import { useNavigate } from 'react-router-dom';
 import Flashcard from '../components/Flashcard';
 
@@ -114,10 +115,11 @@ const Notes: React.FC = () => {
     if (!activeNote || !selectedCourse) return;
 
     try {
-        await updateNoteContent(selectedCourse, activeNote.id, editedContent);
-        console.log("Saved note:", activeNote.id, "with content:", editedContent);
-        setActiveNote(prev => prev ? { ...prev, content: editedContent } : null);
-        setNotes(prev => prev.map(n => n.id === activeNote.id ? { ...n, content: editedContent } : n));
+        const sanitizedContent = DOMPurify.sanitize(editedContent);
+        await updateNoteContent(selectedCourse, activeNote.id, sanitizedContent);
+        console.log("Saved note:", activeNote.id, "with content:", sanitizedContent);
+        setActiveNote(prev => prev ? { ...prev, content: sanitizedContent } : null);
+        setNotes(prev => prev.map(n => n.id === activeNote.id ? { ...n, content: sanitizedContent } : n));
         setIsEditingNote(false);
     } catch (error) {
         console.error("Failed to save note edit:", error);
@@ -163,6 +165,7 @@ const Notes: React.FC = () => {
     try {
         const base64Data = await fileToBase64(file);
         extractedContent = await extractTextFromFile(base64Data, file.type);
+        extractedContent = DOMPurify.sanitize(extractedContent);
         console.log(`Extracted ${extractedContent.length} characters from ${file.name}`);
 
         if (!extractedContent || extractedContent.trim().length === 0) {
@@ -196,8 +199,9 @@ const Notes: React.FC = () => {
 
     setIsSingleGenerating(note.id);
     try {
-        console.log(`Generating flashcards from single note '${note.title}' (length: ${note.content.length})`);
-        const flashcardsJson = await generateFlashcards(note.content);
+        const sanitizedNoteContent = DOMPurify.sanitize(note.content);
+        console.log(`Generating flashcards from single note '${note.title}' (length: ${sanitizedNoteContent.length})`);
+        const flashcardsJson = await generateFlashcards(sanitizedNoteContent);
         const newFlashcards = JSON.parse(flashcardsJson).map((f: any) => ({ ...f, id: `mock_flashcard_${Date.now()}_${Math.random()}`, bucket: 1, lastReview: Date.now() }));
 
         await addFlashcards(selectedCourse, newFlashcards);

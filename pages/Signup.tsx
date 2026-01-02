@@ -26,6 +26,16 @@ const Signup: React.FC = () => {
         return;
     }
 
+    if (displayName.length < 2 || displayName.length > 50) {
+        setError('Display Name must be between 2 and 50 characters.');
+        return;
+    }
+
+    if (university.length < 2 || university.length > 100) {
+        setError('University Name must be between 2 and 100 characters.');
+        return;
+    }
+
     const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
     if (!passwordRegex.test(password)) {
         setError("Password must be at least 8 characters long and include at least one number and one special character.");
@@ -44,10 +54,10 @@ const Signup: React.FC = () => {
     setError('');
     setLoading(true);
     try {
-      await signup(displayName, email, university, password);
+      await signup(displayName, email, password);
       navigate('/');
     } catch (err: any) {
-      setError('Failed to create an account. Please try again.');
+      setError(err.message || 'Failed to create an account. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -72,7 +82,9 @@ const Signup: React.FC = () => {
       
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-            <label htmlFor="displayName" className="block text-sm font-medium text-slate-300 mb-2">Full Name</label>
+            <label htmlFor="displayName" className="block text-sm font-medium text-slate-300 mb-2">
+                Full Name <span className="text-slate-500 text-xs">(This will be displayed to other users)</span>
+            </label>
             <Input
                 id="displayName"
                 type="text"
@@ -84,7 +96,9 @@ const Signup: React.FC = () => {
             />
         </div>
         <div>
-            <label htmlFor="university" className="block text-sm font-medium text-slate-300 mb-2">University Name</label>
+            <label htmlFor="university" className="block text-sm font-medium text-slate-300 mb-2">
+                University Name <span className="text-slate-500 text-xs">(e.g., University of California, Berkeley)</span>
+            </label>
             <Input
                 id="university"
                 type="text"
@@ -96,7 +110,9 @@ const Signup: React.FC = () => {
             />
         </div>
         <div>
-            <label htmlFor="email-signup" className="block text-sm font-medium text-slate-300 mb-2">Email Address</label>
+            <label htmlFor="email-signup" className="block text-sm font-medium text-slate-300 mb-2">
+                Email Address <span className="text-slate-500 text-xs">(We'll use this for login and account recovery)</span>
+            </label>
             <Input
                 id="email-signup"
                 type="email"

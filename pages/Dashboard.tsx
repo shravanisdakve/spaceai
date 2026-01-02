@@ -1,30 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PageHeader, Button, Input } from '../components/ui';
+import { PageHeader, Button, Input, Skeleton } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { type Course, type Mood as MoodType } from '../types';
 import { getTimeOfDayGreeting, getMostUsedTool } from '../services/personalizationService';
 import { getProductivityReport } from '../services/analyticsService';
 import { getCourses, addCourse, deleteCourse } from '../services/courseService';
 import GoalsWidget from '../components/GoalsWidget';
-import MoodCheckin from '../components/MoodCheckin'; // Import new MoodCheckin
+import MoodCheckin from '../components/Dashboard/MoodCheckin'; // Import new MoodCheckin from new location
 import { getSuggestionForMood } from '../services/geminiService'; // Import AI suggestion service
+import { formatSeconds } from '../utils/formatters';
 import {
     MessageSquare, Share2, FileText, Code, ArrowRight,
     Target, Lightbulb, Timer, Zap, BookOpen,
     Play, Pause, RefreshCw, PlusCircle, Trash2, User, Users, Star,
     BarChart, Clock, Brain, TrendingUp, TrendingDown, Repeat, Sparkles // Added Sparkles
 } from 'lucide-react';
-
-const formatSeconds = (seconds: number) => {
-    if (seconds < 60) return `${seconds}s`;
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    let result = '';
-    if (hours > 0) result += `${hours}h `;
-    if (minutes > 0) result += `${minutes}m`;
-    return result.trim() || '0m';
-};
 
 const ProductivityInsights: React.FC = () => {
     const [report, setReport] = useState<Awaited<ReturnType<typeof getProductivityReport>> | null>(null);
@@ -47,10 +38,14 @@ const ProductivityInsights: React.FC = () => {
 
     if (isLoading) {
         return (
-            <div className="bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700 text-center">
-                <p className="text-slate-400">Loading weekly snapshot...</p>
-                {/* Optional: Add a Spinner here */}
-                {/* <Spinner /> */}
+            <div className="bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700">
+                <h3 className="text-xl font-bold text-slate-100 flex items-center mb-4">
+                    <BarChart className="w-6 h-6 mr-3 text-violet-400" /> Weekly Snapshot
+                </h3>
+                <div className="space-y-4">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                </div>
             </div>
         );
     }
@@ -97,83 +92,201 @@ const ProductivityInsights: React.FC = () => {
 };
 
 const MyCourses: React.FC = () => {
+
     const [courses, setCourses] = useState<Course[]>([]);
+
     const [newCourseName, setNewCourseName] = useState('');
+
     const [isAdding, setIsAdding] = useState(false);
+
     const [isLoading, setIsLoading] = useState(true);
 
+    const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(null);
+
+    const [hasMoreCourses, setHasMoreCourses] = useState(true);
+
+
+
+    const COURSE_LIMIT = 5; // Define a limit for courses to fetch per page
+
+
+
+    const fetchCourses = async (loadMore: boolean = false) => {
+
+        setIsLoading(true);
+
+        console.log("MyCourses: Fetching courses...");
+
+        try {
+
+            const { courses: newCourses, lastVisibleDocId: newLastVisibleDocId } = await getCourses(loadMore ? lastVisibleDocId : null, COURSE_LIMIT);
+
+            
+
+            setCourses(prev => loadMore ? [...prev, ...newCourses] : newCourses);
+
+            setLastVisibleDocId(newLastVisibleDocId);
+
+            setHasMoreCourses(newCourses.length === COURSE_LIMIT); // If we fetched less than limit, no more courses
+
+
+
+        } catch (error) {
+
+             console.error("Error fetching courses:", error);
+
+        } finally {
+
+             setIsLoading(false);
+
+        }
+
+    };
+
+
+
     useEffect(() => {
-        const fetchCourses = async () => {
-            setIsLoading(true);
-            console.log("MyCourses: Fetching courses...");
-            try {
-                const fetchedCourses = await getCourses();
-                console.log("MyCourses: Fetched courses:", fetchedCourses);
-                setCourses(fetchedCourses);
-            } catch (error) {
-                 console.error("Error fetching courses:", error);
-            } finally {
-                 setIsLoading(false);
-            }
-        };
+
         fetchCourses();
+
     }, []);
 
+
+
     const handleAddCourse = async (e: React.FormEvent) => {
+
         e.preventDefault();
+
         if(newCourseName.trim()) {
+
             console.log("MyCourses: Adding course:", newCourseName);
+
             try {
+
                 const newCourse = await addCourse(newCourseName.trim());
+
                 if (newCourse) {
+
                     console.log("MyCourses: Added course:", newCourse);
-                    setCourses(prev => [...prev, newCourse]);
+
+                    // Re-fetch all courses to ensure correct order and pagination state
+
+                    fetchCourses(); 
+
                 }
+
                 setNewCourseName('');
+
                 setIsAdding(false);
+
             } catch (error) {
+
                  console.error("Error adding course:", error);
+
                  // Optionally show error to user
+
             }
+
         }
+
     }
+
+
 
     const handleDeleteCourse = async (id: string) => {
+
         console.log("MyCourses: Deleting course:", id);
+
         try {
+
             await deleteCourse(id);
-            setCourses(prev => prev.filter(c => c.id !== id));
-            console.log("MyCourses: Deleted course:", id);
+
+            // Re-fetch all courses to ensure correct order and pagination state
+
+            fetchCourses();
+
         } catch (error) {
+
              console.error("Error deleting course:", error);
+
              // Optionally show error to user
+
         }
+
     }
 
+
+
     return (
+
         <div className="bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700">
+
             <h3 className="text-xl font-bold text-slate-100 flex items-center mb-4">
+
                 <BookOpen className="w-6 h-6 mr-3 text-violet-400" /> My Courses
+
             </h3>
+
             <div className="space-y-2">
-                {isLoading && <p className="text-slate-400 text-center">Loading courses...</p>}
-                {!isLoading && courses.length === 0 && !isAdding && (
-                    <div className="text-center py-4">
-                        <p className="text-slate-400 mb-4">You haven't added any courses yet. Add one to get started!</p>
-                    </div>
+
+                {isLoading && (
+
+                    <>
+
+                        <Skeleton className="h-12 w-full" />
+
+                        <Skeleton className="h-12 w-full" />
+
+                        <Skeleton className="h-12 w-full" />
+
+                    </>
+
                 )}
+
+                {!isLoading && courses.length === 0 && ( // Removed !isAdding from condition
+
+                    <div className="text-center py-4">
+
+                        <p className="text-slate-400 mb-4">You haven't added any courses yet. Add one to get started!</p>
+
+                    </div>
+
+                )}
+
                 {courses.map(course => (
+
                     <Link to="/notes" state={{ courseId: course.id }} key={course.id} className="group flex items-center justify-between bg-slate-800 p-3 rounded-lg hover:bg-slate-700 transition-colors">
-                        <div className="flex items-center overflow-hidden mr-2"> {/* Added overflow-hidden */}
+
+                        <div className="flex items-center overflow-hidden mr-2">
+
                             <span className="w-3 h-3 rounded-full mr-3 flex-shrink-0" style={{ backgroundColor: course.color }}></span>
-                            <span className="font-medium text-slate-300 truncate">{course.name}</span> {/* Added truncate */}
+
+                            <span className="font-medium text-slate-300 truncate">{course.name}</span>
+
                         </div>
+
                         <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteCourse(course.id); }} className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+
                             <Trash2 size={16} />
+
                         </button>
+
                     </Link>
+
                 ))}
+
             </div>
+
+            {hasMoreCourses && !isLoading && (
+
+                <Button onClick={() => fetchCourses(true)} className="w-full mt-4 text-sm" variant="outline">
+
+                    Load More
+
+                </Button>
+
+            )}
+
             {isAdding ? (
                 <form onSubmit={handleAddCourse} className="mt-4 flex gap-2">
                     <Input
