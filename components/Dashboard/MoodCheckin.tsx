@@ -1,7 +1,7 @@
 // src/components/MoodCheckin.tsx
 import React, { useState } from 'react';
 // Import your service to record the mood
-import { recordMood } from '../services/personalizationService'; 
+import { recordMood } from '../../services/personalizationService'; 
 import { type Mood as MoodType } from '../types';
 
 // Define the mood type

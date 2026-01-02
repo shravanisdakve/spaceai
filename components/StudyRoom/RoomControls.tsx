@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from './ui';
+import { Button } from '../Common/ui';
 // --- FIX: Add UserPlus icon ---
 import { Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff, PhoneOff, Smile, Music, Share2, Clock, UserPlus } from 'lucide-react';
 // --- END FIX ---

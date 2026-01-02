@@ -1,5 +1,5 @@
 import React from 'react';
-import { PageHeader } from '../components/ui';
+import { PageHeader } from '../components/Common/ui';
 import { Brain, Grid3X3, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Calculator } from 'lucide-react';

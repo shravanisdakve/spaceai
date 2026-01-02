@@ -15,13 +15,7 @@ from logging_utils import setup_logger, log_request, log_model_generation, log_g
 
 # Setup logger
 logger = setup_logger('art_style_api', 'art_style_api.log')
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-# Setup logger
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-# Setup logger
 app = FastAPI(title="Art & Style Document Analysis API")
-logger.info('🚀 Starting Art_Style Document Analysis API')
-logger.info('🚀 Starting Art_Style Document Analysis API')
 logger.info('🚀 Starting Art_Style Document Analysis API')
 app.add_middleware(
     CORSMiddleware,
@@ -106,14 +100,10 @@ def get_model_name(size: str) -> str:
 @app.get("/")
 async def root():
     logger.info("🔍 Health check endpoint called")
-    logger.info("🔍 Health check endpoint called")
-    logger.info("🔍 Health check endpoint called")
     return {"message": "Art & Style Document Analysis API is running"}
 
 @app.get("/models")
 async def list_models():
-    logger.info("📋 Listing available models")
-    logger.info("📋 Listing available models")
     logger.info("📋 Listing available models")
     """List available models and their status."""
     try:

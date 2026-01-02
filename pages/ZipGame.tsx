@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PageHeader } from '../components/ui';
+import { PageHeader } from '../components/Common/ui';
 import { saveGameActivity } from '@/services/gameTracker';
 
 const LETTERS = ['A', 'S', 'D', 'F', 'J', 'K', 'L'];

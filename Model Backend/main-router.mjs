@@ -229,7 +229,7 @@ app.use((err, req, res, next) => {
     if (err instanceof Error) {
         // You might define custom error classes with statusCode property
         // For now, default to 500
-        return res.status((err as any).statusCode || 500).json({
+        return res.status(err?.statusCode || 500).json({
             error: err.message,
             details: process.env.NODE_ENV === 'development' ? err.stack : undefined,
         });

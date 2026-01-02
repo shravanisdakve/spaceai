@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { PageHeader, Spinner } from '../components/ui';
+import { PageHeader, Spinner } from '../components/Common/ui';
 import { Clock, Gamepad2, Activity } from 'lucide-react';
 
 // -------------------- TYPES --------------------

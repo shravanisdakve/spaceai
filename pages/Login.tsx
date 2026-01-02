@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { BrainCircuit, Eye, EyeOff } from 'lucide-react';
-import { Button, Input } from '../components/ui';
+import { Button, Input } from '../components/Common/ui';
 
 const taglines = [
     "Unlock your smarter study session.",

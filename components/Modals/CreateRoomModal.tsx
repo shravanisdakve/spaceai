@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 // --- FIX: Import Select component and Course type ---
-import { Modal, Button, Input, Select } from './ui';
-import { type Course } from '../types'; // Import Course type
+import { Modal, Button, Input, Select } from '../Common/ui';
+import { type Course } from '../../types'; // Import Course type
 // --- END FIX ---
 import { User, Users, Briefcase, ArrowLeft, MessageSquare, Brain, Timer, Target, Building } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { addRoom } from '../services/communityService';
+import { addRoom } from '../../services/communityService';
 // --- FIX: Import getCourses service ---
-import { getCourses } from '../services/courseService';
+import { getCourses } from '../../services/courseService';
 // --- END FIX ---
 import { useAuth } from '../../hooks/useAuth';
 

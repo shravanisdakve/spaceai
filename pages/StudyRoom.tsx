@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { type ChatMessage, type StudyRoom as StudyRoomType, type Quiz as SharedQuiz } from '../types';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import {
     onRoomUpdate,
     onMessagesUpdate,
@@ -26,7 +26,7 @@ import DOMPurify from 'dompurify'; // Import DOMPurify
 // --- REMOVED Clock import here ---
 import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, Smile, FolderOpen, AlertTriangle, Info } from 'lucide-react';
 // --- END REMOVAL ---
-import { Input, Button, Textarea, Spinner } from '../components/ui';
+import { Input, Button, Textarea, Spinner } from '../components/Common/ui';
 import RoomControls from '../components/StudyRoom/RoomControls'; //
 import VideoTile from '../components/StudyRoom/VideoTile';
 import Reactions, { type Reaction } from '../components/StudyRoom/Reactions';

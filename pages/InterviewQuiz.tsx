@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PageHeader } from '../components/ui';
+import { PageHeader } from '../components/Common/ui';
 import { Brain, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { saveGameActivity } from '@/services/gameTracker';

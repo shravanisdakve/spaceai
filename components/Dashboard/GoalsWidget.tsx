@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { addGoal, getGoals, updateGoal, deleteGoal, Goal } from '../services/goalService';
-import { Input, Button } from './ui';
+import { addGoal, getGoals, updateGoal, deleteGoal, Goal } from '../../services/goalService';
+import { Input, Button } from '../Common/ui';
 import { PlusCircle, Trash2, CheckCircle } from 'lucide-react';
 
 const GoalsWidget: React.FC = () => {

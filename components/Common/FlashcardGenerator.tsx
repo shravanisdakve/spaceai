@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Spinner } from './ui';
 import Flashcard from './Flashcard';
-import { generateFlashcards as generateFlashcardsApi } from '../services/geminiService';
+import { generateFlashcards as generateFlashcardsApi } from '../../services/geminiService';
 
 interface FlashcardGeneratorProps {
   notes: string;

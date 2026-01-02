@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Button } from './ui'; // Only import what's needed for Sidebar directly
 import ProfileEditModal from '../Modals/ProfileEditModal'; // Import the extracted modal
-import { useAuth } from '../../contexts/AuthContext'; // Adjust path for AuthContext
+import { useAuth } from '../../hooks/useAuth';
 import { LayoutDashboard, MessageSquare, Share2, FileText, Code, BrainCircuit, LogOut, BarChart2, Users, ClipboardList, Edit3, X } from 'lucide-react';
 
 const navigation = [

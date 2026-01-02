@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { getCourses, addCourse } from '../services/courseService';
 import { getNotes, addTextNote, uploadNoteFile, deleteNote, getFlashcards, addFlashcards, updateFlashcard, updateNoteContent } from '../services/notesService';
 import { type Note, type Course, type Flashcard as FlashcardType } from '../types';
-import { PageHeader, Button, Input, Textarea, Select, Modal, Spinner } from '../components/ui';
+import { PageHeader, Button, Input, Textarea, Select, Modal, Spinner } from '../components/Common/ui';
 import { PlusCircle, Trash2, Upload, FileText, BookOpen, Layers, X, Brain, Edit, Save, ArrowLeft, Download, Eye, EyeOff } from 'lucide-react';
 import { generateFlashcards, extractTextFromFile } from '../services/geminiService';
 import DOMPurify from 'dompurify'; // Import DOMPurify
 import { useNavigate } from 'react-router-dom';
-import Flashcard from '../components/Flashcard';
+import Flashcard from '../components/Common/Flashcard';
 
 // Helper function
 const fileToBase64 = (file: File): Promise<string> => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { PageHeader, Button, Input } from '../components/ui';
-import { useAuth } from '../contexts/AuthContext';
+import { PageHeader, Button, Input } from '../components/Common/ui';
+import { useAuth } from '../hooks/useAuth';
 import { ArrowRight, PlusCircle, Users } from 'lucide-react';
 import CreateRoomModal from '../components/Modals/CreateRoomModal'; // Import the new modal from new location
 import { getRooms } from '../services/communityService';

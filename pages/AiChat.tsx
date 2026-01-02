@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { PageHeader, Input, Button } from '../components/ui';
-import CourseSelector from '../components/CourseSelector';
+import { PageHeader, Input, Button } from '../components/Common/ui';
+import CourseSelector from '../components/Common/CourseSelector';
 import { type ChatMessage } from '../types';
 import { getTutors, type TutorProfile, streamLocalChat } from '../services/localLlamaService';
 import { trackToolUsage } from '../services/personalizationService';

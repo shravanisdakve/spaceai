@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { type Course } from '../types';
-import { getCourses } from '../services/courseService';
+import { type Course } from '../../types';
+import { getCourses } from '../../services/courseService';
 import { BookCopy } from 'lucide-react';
 
 interface CourseSelectorProps {

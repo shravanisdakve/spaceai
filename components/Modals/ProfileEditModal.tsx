@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Input, Button } from '../Common/ui'; // Adjust path as ui.tsx is now in Common
-import { useAuth } from '../../contexts/AuthContext'; // Adjust path for AuthContext
+import { useAuth } from '../../hooks/useAuth';
 
 interface ProfileEditModalProps {
     isOpen: boolean;

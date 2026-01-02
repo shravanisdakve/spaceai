@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Button, Textarea, Spinner } from './ui';
+import { Button, Textarea, Spinner } from '../Common/ui';
 // Note type might not be strictly needed if we use DisplayItem consistently
 // import { Note } from '../types';
 import { FileText, Paperclip, Trash2, Edit, Save, Download, Eye, EyeOff, Upload, Info } from 'lucide-react';

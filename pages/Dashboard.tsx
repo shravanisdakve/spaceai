@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PageHeader, Button, Input, Skeleton } from '../components/ui';
-import { useAuth } from '../contexts/AuthContext';
+import { PageHeader, Button, Input, Skeleton } from '../components/Common/ui';
+import { useAuth } from '../hooks/useAuth';
 import { type Course, type Mood as MoodType } from '../types';
 import { getTimeOfDayGreeting, getMostUsedTool } from '../services/personalizationService';
 import { getProductivityReport } from '../services/analyticsService';
 import { getCourses, addCourse, deleteCourse } from '../services/courseService';
-import GoalsWidget from '../components/GoalsWidget';
+import GoalsWidget from '../components/Dashboard/GoalsWidget';
 import MoodCheckin from '../components/Dashboard/MoodCheckin'; // Import new MoodCheckin from new location
 import { getSuggestionForMood } from '../services/geminiService'; // Import AI suggestion service
 import { formatSeconds } from '../utils/formatters';

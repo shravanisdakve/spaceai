@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { getCourse } from '../services/courseService';
 import { 
   onMessagesUpdate, sendChatMessage, onResourcesUpdate, uploadResource, deleteResource, getRooms 
 } from '../services/communityService';
 import { type Course, type ChatMessage, type StudyRoom } from '../types';
-import { Input, Button, Spinner } from '../components/ui';
+import { Input, Button, Spinner } from '../components/Common/ui';
 import { MessageSquare, Paperclip, Send, Trash2, Users, ArrowRight, BookOpen, UploadCloud } from 'lucide-react';
 
 const CourseCommunity: React.FC = () => {

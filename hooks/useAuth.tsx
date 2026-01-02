@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, createContext, ReactNode } from 'react';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
 import { 
     onAuthStateChanged, 
     createUserWithEmailAndPassword, 
@@ -9,19 +9,20 @@ import {
     updateProfile,
     type User as FirebaseUser
 } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 // Custom User interface to match your app's needs
 interface User {
   uid: string;
   displayName: string | null;
   email: string | null;
-  // university?: string; // This would be stored in Firestore, not in the auth object
+  // university?: string; // This will be stored in Firestore, not in the auth object
 }
 
 interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
-  signup: (displayName: string, email: string, password: string) => Promise<void>;
+  signup: (displayName: string, email: string, password: string, university: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -63,11 +64,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return unsubscribe;
   }, []);
 
-  const signup = async (displayName: string, email: string, password: string) => {
+  const signup = async (displayName: string, email: string, password: string, university: string) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
       // After creating the user, update their profile with the display name
-      await updateProfile(userCredential.user, { displayName });
+      await updateProfile(user, { displayName });
+
+      // Now, save the university and other details to Firestore
+      const userDocRef = doc(db, "users", user.uid);
+      await setDoc(userDocRef, {
+        uid: user.uid,
+        displayName,
+        email,
+        university,
+        createdAt: new Date(),
+      });
+
       // The onAuthStateChanged listener will automatically update the currentUser state
     } catch (error: any) {
       let errorMessage = "An unknown error occurred during sign up.";

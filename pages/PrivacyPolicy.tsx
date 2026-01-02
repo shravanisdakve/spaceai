@@ -1,5 +1,5 @@
 import React from 'react';
-import { PageHeader } from '../components/ui';
+import { PageHeader } from '../components/Common/ui';
 
 const PrivacyPolicy: React.FC = () => {
   return (
