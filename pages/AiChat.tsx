@@ -4,6 +4,7 @@ import { PageHeader, Input, Button } from '../components/Common/ui';
 import CourseSelector from '../components/Common/CourseSelector';
 import { type ChatMessage } from '../types';
 import { getTutors, type TutorProfile, streamLocalChat } from '../services/localLlamaService';
+import { getAvailableAnalysisDomains, analyzeTextWithPythonBackend, analyzeTextWithNodeBackendChatProxy, type AnalysisRequest, type AnalysisResponse } from '../services/domainAnalysisService';
 import { trackToolUsage } from '../services/personalizationService';
 import { startSession, endSession, recordQuizResult, getProductivityReport } from '../services/analyticsService';
 import { Bot, User, Send, Mic, Volume2, VolumeX, Lightbulb } from 'lucide-react';
@@ -58,14 +59,32 @@ const AiTutor: React.FC = () => {
     const [quiz, setQuiz] = useState<Quiz | null>(null);
     const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
     const [tutors, setTutors] = useState<TutorProfile[]>([]);
-    const [selectedTutorId, setSelectedTutorId] = useState<string>('general_tutor');
+    const [availableAnalysisDomains, setAvailableAnalysisDomains] = useState<Array<{ id: string; display_name: string; }>>([]);
+    const [selectedDomainId, setSelectedDomainId] = useState<string>('general'); // Unified for tutor_id or analysis domain
+    const [mode, setMode] = useState<'tutor' | 'analysis'>('tutor'); // 'tutor' or 'analysis'
+    const [backendType, setBackendType] = useState<'python' | 'nodejs'>('python'); // 'python' or 'nodejs' for analysis mode
 
     useEffect(() => {
-        getTutors().then(data => {
-            setTutors(data);
-            if(data.length > 0) setSelectedTutorId(data[0].id);
-        });
-    }, []);
+        const fetchInitialData = async () => {
+            // Fetch tutors
+            const fetchedTutors = await getTutors();
+            setTutors(fetchedTutors);
+            
+            // Fetch analysis domains
+            const fetchedAnalysisDomains = await getAvailableAnalysisDomains();
+            setAvailableAnalysisDomains(fetchedAnalysisDomains);
+
+            // Set initial selected domain based on mode
+            if (mode === 'tutor' && fetchedTutors.length > 0) {
+                setSelectedDomainId(fetchedTutors[0].id);
+            } else if (mode === 'analysis' && fetchedAnalysisDomains.length > 0) {
+                setSelectedDomainId(fetchedAnalysisDomains[0].id);
+            } else {
+                setSelectedDomainId('general'); // Default fallback
+            }
+        };
+        fetchInitialData();
+    }, [mode]); // Refetch when mode changes to update selection options and default.
     const [isAutoSpeaking, setIsAutoSpeaking] = useState(() => {
         try {
             return localStorage.getItem('nexusAutoSpeak') === 'true';
@@ -176,33 +195,70 @@ const AiTutor: React.FC = () => {
         speechSynthesis.cancel();
         
         const newUserMessage: ChatMessage = { role: 'user', parts: [{ text: currentMessage }] };
-        const newModelMessage: ChatMessage = { role: 'model', parts: [{ text: '' }] }; // Placeholder for model response
-        setMessages(prev => [...prev, newUserMessage, newModelMessage]);
+        setMessages(prev => [...prev, newUserMessage]); // Add user message immediately
         setInput('');
         setIsLoading(true);
         setError(null);
         setQuiz(null);
 
         try {
-            const stream = await streamLocalChat([...messages, newUserMessage], selectedTutorId);
-            
-            let modelResponse = '';
-            for await (const chunk of stream) {
-                modelResponse += chunk.text;
-                setMessages(prev => {
-                    const newMessages = [...prev];
-                    const lastMessage = newMessages[newMessages.length - 1];
-                    if (lastMessage && lastMessage.role === 'model') {
-                        lastMessage.parts = [{ text: modelResponse }];
+            let modelResponseContent = '';
+            if (mode === 'tutor') {
+                const newModelMessage: ChatMessage = { role: 'model', parts: [{ text: '' }] }; // Placeholder for model response
+                setMessages(prev => [...prev, newModelMessage]);
+                const stream = await streamLocalChat([...messages, newUserMessage], selectedDomainId); // selectedTutorId is now selectedDomainId
+                
+                for await (const chunk of stream) {
+                    modelResponseContent += chunk.text;
+                    setMessages(prev => {
+                        const newMessages = [...prev];
+                        const lastMessage = newMessages[newMessages.length - 1];
+                        if (lastMessage && lastMessage.role === 'model') {
+                            lastMessage.parts = [{ text: modelResponseContent }];
+                        }
+                        return newMessages;
+                    });
+                }
+            } else { // Analysis mode
+                // For analysis, we don't stream, we get a full response
+                const analysisRequest: AnalysisRequest = {
+                    text: currentMessage,
+                    domain: selectedDomainId,
+                    queryType: selectedDomainId,
+                    model_size: '8b', // Hardcoded for now
+                    advanced_analysis: true, // Hardcoded for now
+                    context: {
+                        subject: selectedDomainId,
+                        level: 'intermediate', // Hardcoded for now
+                        format: 'text', // Hardcoded for now
                     }
-                    return newMessages;
-                });
+                };
+
+                let analysisResult: AnalysisResponse;
+                if (backendType === 'python') {
+                    analysisResult = await analyzeTextWithPythonBackend(analysisRequest);
+                } else { // nodejs
+                    analysisResult = await analyzeTextWithNodeBackendChatProxy(
+                        currentMessage,
+                        selectedDomainId,
+                        analysisRequest.context!
+                    );
+                }
+
+                if (analysisResult.error) {
+                    modelResponseContent = `Error: ${analysisResult.error}\nDetails: ${analysisResult.message || 'No additional details.'}`;
+                    setError(modelResponseContent);
+                } else {
+                    modelResponseContent = `**Analysis Summary for ${selectedDomainId}:**\n\n${analysisResult.summary}\n\n` +
+                                           `**Learning Roadmap:**\n${analysisResult.roadmap}\n\n` +
+                                           (analysisResult.key_concepts ? `**Key Concepts:** ${analysisResult.key_concepts.join(', ')}\n\n` : '') +
+                                           (analysisResult.difficulty_level ? `**Difficulty:** ${analysisResult.difficulty_level}\n\n` : '');
+                }
+                setMessages(prev => [...prev, { role: 'model', parts: [{ text: modelResponseContent }] }]);
             }
             
-            setIsLoading(false); // Hide loading indicator once streaming is complete
-            
-            if (modelResponse && (isAutoSpeaking || isVoiceInput)) {
-                handleSpeak(modelResponse);
+            if (modelResponseContent && (isAutoSpeaking || isVoiceInput)) {
+                handleSpeak(modelResponseContent);
             }
         } catch (err) {
             console.error(err);
@@ -212,7 +268,7 @@ const AiTutor: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [input, isLoading, isAutoSpeaking]);
+    }, [input, isLoading, isAutoSpeaking, mode, selectedDomainId, backendType, messages]);
 
     const handleQuizMe = async () => {
         if (isLoading) return;
@@ -322,19 +378,56 @@ const AiTutor: React.FC = () => {
     return (
         <div className="h-full flex flex-col">
             <div className="flex justify-between items-center">
-                <PageHeader title="AI Tutor" subtitle="Your personal AI guide for any subject." />
+                <PageHeader 
+                    title={mode === 'tutor' ? "AI Tutor" : "Document Analyzer"} 
+                    subtitle={mode === 'tutor' ? "Your personal AI guide for any subject." : "Analyze text with domain-specific AI models."} 
+                />
                 <div className="flex items-center gap-4">
+                    {/* Mode Toggle */}
+                    <div className="flex bg-slate-800 rounded-lg p-1">
+                        <Button
+                            onClick={() => setMode('tutor')}
+                            className={`px-3 py-1.5 text-xs font-medium ${mode === 'tutor' ? 'bg-violet-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            Tutor Chat
+                        </Button>
+                        <Button
+                            onClick={() => setMode('analysis')}
+                            className={`px-3 py-1.5 text-xs font-medium ${mode === 'analysis' ? 'bg-violet-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            Document Analysis
+                        </Button>
+                    </div>
+
+                    {/* Domain Selector */}
                     <select 
-                       value={selectedTutorId} 
-                       onChange={(e) => setSelectedTutorId(e.target.value)}
+                       value={selectedDomainId} 
+                       onChange={(e) => setSelectedDomainId(e.target.value)}
                        className="bg-slate-800 text-slate-200 text-xs p-2 rounded-lg border border-slate-700"
                     >
-                       {tutors.map(t => (
+                       {mode === 'tutor' && tutors.map(t => (
                            <option key={t.id} value={t.id}>
                                {t.display_name} ({t.topic})
                            </option>
                        ))}
+                       {mode === 'analysis' && availableAnalysisDomains.map(d => (
+                           <option key={d.id} value={d.id}>
+                               {d.display_name}
+                           </option>
+                       ))}
                    </select>
+
+                    {/* Backend Type Selector (only for analysis mode) */}
+                    {mode === 'analysis' && (
+                        <select 
+                            value={backendType} 
+                            onChange={(e) => setBackendType(e.target.value as 'python' | 'nodejs')}
+                            className="bg-slate-800 text-slate-200 text-xs p-2 rounded-lg border border-slate-700"
+                        >
+                            <option value="python">Python Backend</option>
+                            <option value="nodejs">Node.js Backend (Proxy)</option>
+                        </select>
+                    )}
                     <CourseSelector selectedCourse={selectedCourse} onCourseChange={setSelectedCourse} />
                 </div>
             </div>
@@ -392,18 +485,20 @@ const AiTutor: React.FC = () => {
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSend()}
-                        placeholder="Ask a question or start speaking..."
+                        placeholder={mode === 'tutor' ? "Ask a question or start speaking..." : "Enter text for analysis..."}
                         disabled={isLoading || !!quiz}
                         className="flex-1"
                     />
-                     <Button 
-                        onClick={handleQuizMe}
-                        disabled={isLoading || !!quiz}
-                        className="px-4 py-3 bg-slate-700 hover:bg-slate-600"
-                        aria-label="Quiz me"
-                     >
-                        <Lightbulb className="w-5 h-5" />
-                    </Button>
+                     {mode === 'tutor' && (
+                         <Button 
+                            onClick={handleQuizMe}
+                            disabled={isLoading || !!quiz}
+                            className="px-4 py-3 bg-slate-700 hover:bg-slate-600"
+                            aria-label="Quiz me"
+                         >
+                            <Lightbulb className="w-5 h-5" />
+                        </Button>
+                     )}
                      <Button 
                         onClick={handleListen} 
                         disabled={isLoading || !!quiz} 
