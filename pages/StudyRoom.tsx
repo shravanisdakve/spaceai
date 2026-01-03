@@ -194,6 +194,11 @@ const StudyRoom: React.FC = () => {
 
     // --- Effects for Setup and Teardown ---
     const getMedia = useCallback(async () => {
+        // Optimization: If we already have an active stream, don't re-request unless necessary
+        if (localStreamRef.current && localStreamRef.current.active) {
+            return;
+        }
+
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach(track => track.stop());
         }

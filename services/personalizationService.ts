@@ -51,7 +51,7 @@ export const getMostUsedTool = async (): Promise<string | null> => {
         if (userDoc.exists()) {
             const data = userDoc.data();
             const toolUsage = data.toolUsage || {};
-            const totalUsage = Object.values(toolUsage).reduce((sum: number, count: any) => sum + count, 0);
+            const totalUsage = Object.values(toolUsage).reduce((sum: number, count: any) => sum + (count as number), 0) as number;
 
             if (totalUsage < 3) {
                 return null;
@@ -59,7 +59,7 @@ export const getMostUsedTool = async (): Promise<string | null> => {
 
             const sortedTools = Object.entries(toolUsage).sort((a: [string, any], b: [string, any]) => b[1] - a[1]);
 
-            if (sortedTools.length > 0 && sortedTools[0][1] > 0) {
+            if (sortedTools.length > 0 && (sortedTools[0][1] as number) > 0) {
                 return sortedTools[0][0];
             }
         }
@@ -74,8 +74,8 @@ export const recordMood = async (mood: Omit<Mood, 'timestamp'>) => {
     const userId = getUserId();
     if (!userId || !db) return;
 
+    const newMood = { ...mood, timestamp: new Date().getTime() };
     try {
-        const newMood = { ...mood, timestamp: new Date() };
         await updateDoc(getUserPreferencesDoc(), {
             moods: arrayUnion(newMood)
         });

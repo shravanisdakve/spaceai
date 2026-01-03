@@ -62,7 +62,7 @@ export const addCourse = async (name: string): Promise<Course | null> => {
         return await response.json();
     } catch (error) {
         console.error("Error adding course:", error);
-        return null;
+        throw error; // Re-throw error so UI can handle it
     }
 };
 

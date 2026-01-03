@@ -180,11 +180,8 @@ const MyCourses: React.FC = () => {
                 setIsAdding(false);
 
             } catch (error) {
-
                 console.error("Error adding course:", error);
-
-                // Optionally show error to user
-
+                alert("Failed to add course. Please try again.");
             }
 
         }
@@ -305,7 +302,9 @@ const MyCourses: React.FC = () => {
                     Add Course
                 </Button>
             )}
-        </div>
+            {/* Error handling logic is in handleAddCourse */}
+
+        </div >
     );
 }
 
@@ -385,7 +384,7 @@ const StudyHub: React.FC = () => {
 
     }, []);
 
-    const handleMoodSelected = async (mood: MoodType['mood']) => { // Modified to accept mood
+    const handleMoodSelected = async (mood: string) => { // Modified to accept mood string. Debug: verified mood is string.
         setShowMoodCheckin(false);
         try {
             sessionStorage.setItem(SESSION_MOOD_CHECKIN_KEY, 'true'); // Mark as checked in for this session
