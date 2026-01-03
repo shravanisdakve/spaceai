@@ -86,5 +86,14 @@ export interface Note {
     fileType?: string;
     type?: 'text' | 'file';
     fileExtension?: string;
+    tags?: string[];
+    concepts?: string[];
     createdAt: number;
+}
+
+export interface AdaptiveRecommendation {
+    topic: string;
+    accuracy: number;
+    suggestion: string;
+    severity: 'high' | 'medium' | 'low';
 }

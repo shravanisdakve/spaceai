@@ -1,13 +1,13 @@
 import { type LeaderboardEntry } from '../types';
 import { auth, db } from '../firebase';
-import { 
-    collection, 
-    addDoc, 
-    doc, 
-    updateDoc, 
-    getDocs, 
-    query, 
-    where, 
+import {
+    collection,
+    addDoc,
+    doc,
+    updateDoc,
+    getDocs,
+    query,
+    where,
     Timestamp,
     serverTimestamp,
     orderBy,
@@ -18,7 +18,7 @@ import {
 export const startSession = async (tool: string, courseId: string | null = null): Promise<string | null> => {
     const userId = auth.currentUser?.uid;
     if (!userId) return null;
-    
+
     try {
         const sessionDocRef = await addDoc(collection(db, 'sessions'), {
             userId,
@@ -110,7 +110,7 @@ export const getProductivityReport = async (courseId: string | null = null) => {
     const [sessionSnap, quizSnap, pomodoroSnap] = await Promise.all([
         getDocs(finalSessionsQuery),
         getDocs(finalQuizzesQuery),
-        getDocs(pomodoroSnap) // Pomodoros are not course-specific in this model
+        getDocs(pomodorosQuery) // Fixed: Use query not uninitialized snap
     ]);
 
     const userSessions = sessionSnap.docs.map(doc => {
@@ -120,7 +120,7 @@ export const getProductivityReport = async (courseId: string | null = null) => {
     });
 
     const userQuizzes = quizSnap.docs.map(doc => doc.data());
-    
+
     const totalStudyTime = userSessions.reduce((acc, s) => acc + (s.duration || 0), 0);
     const totalQuizzes = userQuizzes.length;
     const correctQuizzes = userQuizzes.filter(q => q.correct).length;
@@ -148,7 +148,7 @@ export const getProductivityReport = async (courseId: string | null = null) => {
         quizAccuracy,
         totalQuizzes,
         correctQuizzes,
-        strengths, 
+        strengths,
         weaknesses,
         completedPomodoros: pomodoroSnap.docs.length,
         sessions: userSessions,
@@ -188,5 +188,71 @@ export const getLeaderboardData = async (): Promise<LeaderboardEntry[]> => {
         quizScore: stats.quizCount > 0 ? Math.round((stats.correctQuizzes / stats.quizCount) * 100) : 0,
     }));
 
-    return leaderboard.sort((a,b) => b.quizScore - a.quizScore).slice(0, 10);
+    return leaderboard.sort((a, b) => b.quizScore - a.quizScore).slice(0, 10);
+};
+
+export const getAdaptiveRecommendations = async (userId: string): Promise<import('../types').AdaptiveRecommendation | null> => {
+    if (!userId) return null;
+
+    try {
+        // Fetch recent quiz results (last 20 for relevance)
+        const q = query(
+            collection(db, 'quizResults'),
+            where("userId", "==", userId),
+            orderBy("timestamp", "desc"),
+            limit(20)
+        );
+
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) return null;
+
+        const topicStats: { [topic: string]: { correct: number, total: number } } = {};
+
+        snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            const topic = data.topic || 'General';
+            if (!topicStats[topic]) topicStats[topic] = { correct: 0, total: 0 };
+            topicStats[topic].total++;
+            if (data.correct) topicStats[topic].correct++;
+        });
+
+        // Calculate accuracy and find the struggle area
+        let struggleTopic = '';
+        let minAccuracy = 101;
+
+        Object.entries(topicStats).forEach(([topic, stats]) => {
+            if (stats.total < 3) return; // Need at least 3 attempts to determine specific struggle
+            const accuracy = (stats.correct / stats.total) * 100;
+            if (accuracy < minAccuracy) {
+                minAccuracy = accuracy;
+                struggleTopic = topic;
+            }
+        });
+
+        if (!struggleTopic) return null; // No clear struggle area found yet
+
+        let severity: 'high' | 'medium' | 'low' = 'low';
+        if (minAccuracy < 50) severity = 'high';
+        else if (minAccuracy < 75) severity = 'medium';
+
+        let suggestion = "";
+        if (severity === 'high') {
+            suggestion = `You're having trouble with ${struggleTopic} (${Math.round(minAccuracy)}% accuracy). We recommend reviewing your notes and trying a focused practice session.`;
+        } else if (severity === 'medium') {
+            suggestion = `Your ${struggleTopic} skills are improving (${Math.round(minAccuracy)}%), but a little more practice could help you master it.`;
+        } else {
+            return null; // accuracy is high, no recommendation needed
+        }
+
+        return {
+            topic: struggleTopic,
+            accuracy: minAccuracy,
+            suggestion,
+            severity
+        };
+
+    } catch (error) {
+        console.error("Error getting adaptive recommendations:", error);
+        return null;
+    }
 };

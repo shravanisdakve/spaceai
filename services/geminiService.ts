@@ -238,22 +238,12 @@ Example for 'Overwhelmed': 'Not sure what to do next? Try breaking down your mai
 Example for 'Happy': 'Great! Now is a perfect time to tackle that challenging topic you've been putting off.'`;
 
     try {
-        // --- REPLACE WITH YOUR ACTUAL GEMINI API CALL ---
-        // This will depend on how you set up your Gemini client (e.g., `genAI.getGenerativeModel`)
-
-        // const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-        // const result = await model.generateContent(prompt);
-        // const response = await result.response;
-        // return response.text();
-
-        // --- MOCK RESPONSE (Remove this block) ---
-        await new Promise(res => setTimeout(res, 500)); // Simulate network delay
-        if (mood === 'Happy') return "You're feeling good! Now is a great time to tackle that next task on your goal list.";
-        if (mood === 'Calm') return "Feeling calm and focused is the perfect state for a deep study session.";
-        if (mood === 'Overwhelmed') return "Not sure what's next? Try asking the AI chat for ideas or review your notes from yesterday.";
-        if (mood === 'Sad') return "It's okay to feel down. How about listening to some focus music from the music player?";
-        if (mood === 'Angry') return "Frustration is tough. A quick 5-minute break or some deep breaths can make a big difference.";
-        // --- END MOCK RESPONSE ---
+        // --- REAL GEMINI API CALL ---
+        const result = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        return result.text;
 
         return "Let's make today productive!";
 
@@ -283,4 +273,86 @@ Example for "Learn React": ["Understand JSX syntax", "Learn about components and
     });
 
     return response.text;
+};
+
+// --- 11. Smart Quiz Generation (Tier 1 AI Feature) ---
+export const generateQuizFromContent = async (content: string): Promise<any[]> => {
+    if (!content) return [];
+
+    const prompt = `
+    You are an expert AI tutor. Based on the following study notes, generate a short 5-question quiz to test the student's understanding.
+    
+    NOTES CONTENT:
+    """
+    ${content.slice(0, 3000)}
+    """
+
+    Return ONLY a raw JSON array (no markdown, no code blocks) with this exact structure:
+    [
+        {
+            "id": "unique_id_1",
+            "question": "Question text here?",
+            "options": ["Option A", "Option B", "Option C", "Option D"],
+            "correctOptionIndex": 0
+        }
+    ]
+    `;
+
+    try {
+        const result = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        const text = result.text;
+        const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        return JSON.parse(cleanedText);
+    } catch (error) {
+        console.error("Error generating quiz from content:", error);
+        // Fallback mock check if API fails (or for dev without key)
+        return [
+            {
+                id: '1',
+                question: 'What is the main topic of these notes (AI generation error)?',
+                options: ['Topic A', 'Topic B', 'Topic C', 'Topic D'],
+                correctOptionIndex: 0
+            }
+        ];
+    }
+};
+
+// --- 12. Smart Note Analysis (Tier 1 AI Feature) ---
+export const analyzeNoteContent = async (content: string): Promise<{ tags: string[], concepts: string[] }> => {
+    if (!content) return { tags: [], concepts: [] };
+
+    const prompt = `
+    Analyze the following note content and extract:
+    1. 3-5 relevant "tags" (short, lowercase keywords).
+    2. 2-3 core "concepts" (key ideas or definitions discussed).
+
+    NOTE CONTENT:
+    """
+    ${content.slice(0, 3000)}
+    """
+
+    Return ONLY a raw JSON object with this exact structure:
+    {
+        "tags": ["tag1", "tag2"],
+        "concepts": ["Concept 1", "Concept 2"]
+    }
+    `;
+
+    try {
+        const result = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: { responseMimeType: "application/json" }
+        });
+        const text = result.text;
+        // Gemini flash sometimes returns markdown blocks even with json mode
+        const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        return JSON.parse(cleanedText);
+    } catch (error) {
+        console.error("Error analyzing note:", error);
+        return { tags: [], concepts: [] };
+    }
 };

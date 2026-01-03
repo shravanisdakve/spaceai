@@ -16,6 +16,8 @@ import {
     Play, Pause, RefreshCw, PlusCircle, Trash2, User, Users, Star,
     BarChart, Clock, Brain, TrendingUp, TrendingDown, Repeat, Sparkles // Added Sparkles
 } from 'lucide-react';
+import { getAdaptiveRecommendations } from '../services/analyticsService';
+import { type AdaptiveRecommendation } from '../types';
 
 const ProductivityInsights: React.FC = () => {
     const [report, setReport] = useState<Awaited<ReturnType<typeof getProductivityReport>> | null>(null);
@@ -312,6 +314,7 @@ const tools = [
     { key: 'tutor', name: 'AI Tutor', href: '/tutor', description: 'Practice concepts with your AI tutor.', icon: MessageSquare, color: 'text-sky-400', bgColor: 'bg-sky-900/50' },
     { key: 'summaries', name: 'Summaries Generator', href: '/notes', description: 'Generate summaries from your notes.', icon: FileText, color: 'text-emerald-400', bgColor: 'bg-emerald-900/50' },
     { key: 'quizzes', name: 'Quizzes & Practice', href: '/quizzes', description: 'Test your knowledge with practice quizzes.', icon: Brain, color: 'text-rose-400', bgColor: 'bg-rose-900/50' },
+    // Removed Study Group and Progress tracking as they were placeholders or now integrated elsewhere
 ];
 
 interface ToolCardProps {
@@ -356,6 +359,54 @@ const taglines = [
     "Let's get started on your goals.",
     "Your central hub for accelerated learning. Let's get started."
 ];
+
+const AdaptiveLearningWidget: React.FC = () => {
+    const { currentUser } = useAuth();
+    const [recommendation, setRecommendation] = useState<AdaptiveRecommendation | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!currentUser) return;
+        getAdaptiveRecommendations(currentUser.uid).then(rec => {
+            setRecommendation(rec);
+            setLoading(false);
+        });
+    }, [currentUser]);
+
+    if (loading) return null;
+    if (!recommendation) return null; // No struggle detected, don't show
+
+    return (
+        <div className="bg-gradient-to-r from-violet-900/50 to-fuchsia-900/50 rounded-xl p-6 ring-1 ring-violet-500/50 shadow-lg shadow-violet-500/10 mb-8 border-l-4 border-violet-500 relative overflow-hidden">
+
+            <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 bg-violet-500/20 rounded-full blur-2xl"></div>
+
+            <div className="relative z-10">
+                <div className="flex items-center gap-3 mb-3">
+                    <Sparkles className="w-6 h-6 text-yellow-300 animate-pulse" />
+                    <h3 className="text-lg font-bold text-white">AI Adaptive Recommendation</h3>
+                </div>
+
+                <h4 className="text-xl font-semibold text-violet-200 mb-2">
+                    Focus Area: <span className="text-white">{recommendation.topic}</span>
+                </h4>
+
+                <p className="text-slate-300 mb-4 max-w-2xl">
+                    {recommendation.suggestion}
+                </p>
+
+                <div className="flex gap-3">
+                    <Link to="/quizzes">
+                        <Button className="bg-white text-violet-900 hover:bg-violet-100 border-none">
+                            <Target className="w-4 h-4 mr-2" />
+                            Practice {recommendation.topic}
+                        </Button>
+                    </Link>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const SESSION_MOOD_CHECKIN_KEY = 'nexusMoodCheckedInSession'; // Key for sessionStorage
 
@@ -454,6 +505,7 @@ const StudyHub: React.FC = () => {
                 <div className="space-y-8">
                     <GoalsWidget />
                     {showMoodCheckin && <MoodCheckin onMoodSelect={handleMoodSelected} />}
+
                     {(isLoadingSuggestion || aiSuggestion) && (
                         <div className="bg-slate-800/50 p-4 rounded-xl ring-1 ring-slate-700 flex items-center gap-4">
                             <Sparkles className="text-sky-400 w-8 h-8 flex-shrink-0" />
@@ -464,6 +516,10 @@ const StudyHub: React.FC = () => {
                             </div>
                         </div>
                     )}
+
+                    {/* Add Adaptive Strategy Widget */}
+                    <AdaptiveLearningWidget />
+
                     <ProductivityInsights />
                     <MyCourses />
                 </div>

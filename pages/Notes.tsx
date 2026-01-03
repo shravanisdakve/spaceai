@@ -5,9 +5,9 @@ import { getCourses, addCourse } from '../services/courseService';
 import { getNotes, addTextNote, uploadNoteFile, deleteNote, getFlashcards, addFlashcards, updateFlashcard, updateNoteContent } from '../services/notesService';
 import { type Note, type Course, type Flashcard as FlashcardType } from '../types';
 import { PageHeader, Button, Input, Textarea, Select, Modal, Spinner } from '../components/Common/ui';
-import { PlusCircle, Trash2, Upload, FileText, BookOpen, Layers, X, Brain, Edit, Save, ArrowLeft, Download, Eye, EyeOff } from 'lucide-react';
-import { generateFlashcards, extractTextFromFile } from '../services/geminiService';
-import DOMPurify from 'dompurify'; // Import DOMPurify
+import { PlusCircle, Trash2, Upload, FileText, BookOpen, Layers, X, Brain, Edit, Save, ArrowLeft, Download, Eye, EyeOff, Wand2, Lightbulb } from 'lucide-react';
+import { generateFlashcards, extractTextFromFile, summarizeText, generateQuizFromContent, analyzeNoteContent } from '../services/geminiService';
+import DOMPurify from 'dompurify';
 import { useNavigate } from 'react-router-dom';
 import Flashcard from '../components/Common/Flashcard';
 
@@ -27,7 +27,6 @@ const fileToBase64 = (file: File): Promise<string> => {
     reader.readAsDataURL(file);
   });
 };
-
 
 const Notes: React.FC = () => {
   const navigate = useNavigate();
@@ -49,6 +48,69 @@ const Notes: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false); // Loading state for note-based generation
   const [isFileGenerating, setIsFileGenerating] = useState(false); // Loading state for file-based generation
   const [isSingleGenerating, setIsSingleGenerating] = useState<string | null>(null); // Track which note ID is generating
+
+  // --- Summarization State ---
+  const [isSummarizing, setIsSummarizing] = useState(false);
+
+  // --- Quiz Generation State ---
+  const [isQuizGenerating, setIsQuizGenerating] = useState(false);
+
+  // --- Note Analysis State ---
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  const handleAnalyzeNote = async (note: Note) => {
+    if (!note.content || isAnalyzing) return;
+    setIsAnalyzing(true);
+    try {
+      const analysis = await analyzeNoteContent(note.content);
+      // Update local state to show results immediately (in a real app, save to backend)
+      const updatedNote = { ...note, tags: analysis.tags, concepts: analysis.concepts };
+      setNotes(prev => prev.map(n => n.id === note.id ? updatedNote : n));
+      if (activeNote?.id === note.id) {
+        setActiveNote(updatedNote);
+      }
+      alert("Note analysis complete!");
+    } catch (error) {
+      console.error("Analysis failed:", error);
+      alert("Failed to analyze note.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleSummarize = async (note: Note) => {
+    if (!note.content || !selectedCourse || isSummarizing) return;
+    setIsSummarizing(true);
+    try {
+      const summary = await summarizeText(note.content);
+      await addTextNote(selectedCourse, `Summary: ${note.title}`, summary);
+      reloadNotes();
+      alert("Summary created as a new note!");
+    } catch (error) {
+      console.error("Summarization failed:", error);
+      alert("Failed to summarize note. Please try again.");
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
+
+  const handleGenerateQuiz = async (note: Note) => {
+    if (!note.content || isQuizGenerating) return;
+    setIsQuizGenerating(true);
+    try {
+      const quizQuestions = await generateQuizFromContent(note.content);
+      if (quizQuestions && quizQuestions.length > 0) {
+        navigate('/quizzes', { state: { generatedQuiz: quizQuestions, sourceNoteId: note.id, sourceNoteTitle: note.title } });
+      } else {
+        alert("Could not generate a quiz from this note.");
+      }
+    } catch (error) {
+      console.error("Quiz generation failed:", error);
+      alert("Failed to generate quiz.");
+    } finally {
+      setIsQuizGenerating(false);
+    }
+  };
 
   // --- Data Fetching Effects ---
   useEffect(() => {
@@ -105,7 +167,6 @@ const Notes: React.FC = () => {
     setIsEditingNote(false);
   };
 
-  // --- FIX: Updated function signature (no 'e' or 'noteId') ---
   const handleDeleteNote = async (noteToDelete: Note) => {
     if (!selectedCourse || !window.confirm("Are you sure you want to delete this note?")) return;
 
@@ -117,7 +178,6 @@ const Notes: React.FC = () => {
       }
     }
   };
-  // --- END FIX ---
 
   const handleSaveNoteEdit = async () => {
     if (!activeNote || !selectedCourse) return;
@@ -198,7 +258,6 @@ const Notes: React.FC = () => {
     }
   };
 
-  // --- FIX: Updated function signature (no 'e') ---
   const handleGenerateSingleNoteFlashcards = async (note: Note) => {
     if (!note.content || note.content === "[Text extraction pending or failed]" || !selectedCourse || isGenerating || isFileGenerating || isSingleGenerating) {
       alert("This note doesn't have any text content to generate flashcards from.");
@@ -224,10 +283,8 @@ const Notes: React.FC = () => {
       setIsSingleGenerating(null);
     }
   };
-  // --- END FIX ---
 
 
-  // --- FIX: This is the main component's return, now INSIDE the component ---
   return (
     <div className="space-y-6 h-full flex flex-col">
       <PageHeader title="Notes & Resources" subtitle="Manage your notes, files, and flashcards for each course." />
@@ -273,14 +330,20 @@ const Notes: React.FC = () => {
               activeNote={activeNote}
               isEditingNote={isEditingNote}
               editedContent={editedContent}
-              isSingleGenerating={isSingleGenerating} // Pass loading state down
+              isSingleGenerating={isSingleGenerating}
               onSelectNote={handleSelectNote}
-              onDeleteNote={handleDeleteNote} // Pass corrected handler
+              onDeleteNote={handleDeleteNote}
               onSaveEdit={handleSaveNoteEdit}
               onEditClick={() => setIsEditingNote(true)}
               onContentChange={setEditedContent}
               onAddNoteClick={() => setIsModalOpen(true)}
-              onGenerateSingleNoteFlashcards={handleGenerateSingleNoteFlashcards} // Pass corrected handler
+              onGenerateSingleNoteFlashcards={handleGenerateSingleNoteFlashcards}
+              onSummarize={handleSummarize}
+              isSummarizing={isSummarizing}
+              onGenerateQuiz={handleGenerateQuiz}
+              isQuizGenerating={isQuizGenerating}
+              onAnalyzeNote={handleAnalyzeNote}
+              isAnalyzing={isAnalyzing}
             />
           )}
 
@@ -315,7 +378,6 @@ const Notes: React.FC = () => {
       />
     </div>
   );
-  // --- END FIX ---
 };
 
 // --- TabButton Component ---
@@ -331,7 +393,6 @@ const TabButton: React.FC<{ icon: React.ElementType, label: string, isActive: bo
   </button>
 );
 
-// --- FIX: Replaced entire NotesView component with the correct version ---
 const NotesView: React.FC<{
   notes: Note[];
   activeNote: Note | null;
@@ -345,6 +406,12 @@ const NotesView: React.FC<{
   onContentChange: (content: string) => void;
   onAddNoteClick: () => void;
   onGenerateSingleNoteFlashcards: (note: Note) => void;
+  onSummarize: (note: Note) => void;
+  isSummarizing: boolean;
+  onGenerateQuiz: (note: Note) => void;
+  isQuizGenerating: boolean;
+  onAnalyzeNote: (note: Note) => void;
+  isAnalyzing: boolean;
 }> = ({
   notes,
   activeNote,
@@ -357,12 +424,18 @@ const NotesView: React.FC<{
   onEditClick,
   onContentChange,
   onAddNoteClick,
-  onGenerateSingleNoteFlashcards
+  onGenerateSingleNoteFlashcards,
+  onSummarize,
+  isSummarizing,
+  onGenerateQuiz,
+  isQuizGenerating,
+  onAnalyzeNote,
+  isAnalyzing
 }) => {
     const navigate = useNavigate();
 
     const handleDownloadFile = (note: Note) => {
-      if ((note.type === 'file' || note.fileUrl) && note.fileUrl) { // Check for fileUrl
+      if ((note.type === 'file' || note.fileUrl) && note.fileUrl) {
         const link = document.createElement('a');
         link.href = note.fileUrl;
         link.download = note.fileName || (note.title.endsWith(note.fileExtension || '') ? note.title : `${note.title}.${note.fileExtension || 'txt'}`);
@@ -397,22 +470,30 @@ const NotesView: React.FC<{
               const isGeneratingThis = isSingleGenerating === note.id;
               const hasContent = note.content && note.content !== "[Text extraction pending or failed]";
               return (
-                <div // Changed from <button> to <div>
+                <div
                   key={note.id}
                   onClick={() => onSelectNote(note)}
                   className={`w-full text-left p-4 border-b border-slate-700 transition-colors group flex justify-between items-start cursor-pointer ${activeNote?.id === note.id ? 'bg-slate-700' : 'hover:bg-slate-700/50'}`}
-                  role="button" // Added accessibility role
-                  tabIndex={0} // Make it focusable
-                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onSelectNote(note)} // Allow keyboard activation
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onSelectNote(note)}
                 >
-                  {/* Note content remains the same */}
-                  <div className="flex items-center gap-2 overflow-hidden">
-                    {note.type === 'text' || !note.fileUrl ? <FileText size={14} className="mr-2 flex-shrink-0 text-slate-400" /> : <Upload size={14} className="mr-2 flex-shrink-0 text-sky-400" />}
-                    <h4 className="font-semibold text-slate-100 truncate">
-                      {note.title}
-                    </h4>
+                  <div className="flex flex-col gap-1 overflow-hidden w-full">
+                    <div className="flex items-center gap-2">
+                      {note.type === 'text' || !note.fileUrl ? <FileText size={14} className="mr-2 flex-shrink-0 text-slate-400" /> : <Upload size={14} className="mr-2 flex-shrink-0 text-sky-400" />}
+                      <h4 className="font-semibold text-slate-100 truncate flex-1">
+                        {note.title}
+                      </h4>
+                    </div>
+                    {/* Tags in list view */}
+                    {note.tags && note.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 ml-6">
+                        {note.tags.slice(0, 3).map(tag => (
+                          <span key={tag} className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-full">{tag}</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  {/* Action Buttons remain inside the div */}
                   <div className="flex-shrink-0 flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     {hasContent && (
                       <Button
@@ -429,7 +510,7 @@ const NotesView: React.FC<{
                         {isGeneratingThis ? <Spinner size="sm" /> : <Layers size={14} className="text-violet-400" />}
                       </Button>
                     )}
-                    <Button // The inner button (_c2) is now valid as it's inside a div
+                    <Button
                       variant="ghost"
                       size="sm"
                       className="p-1 h-auto hover:bg-red-500/30"
@@ -458,7 +539,29 @@ const NotesView: React.FC<{
                 <h3 className="text-lg font-semibold text-white truncate">{activeNote.title}</h3>
                 <div className="flex items-center gap-2 flex-shrink-0">
 
-                  {/* --- Generate Flashcards Button (as requested) --- */}
+                  {/* --- Analyze Button (New) --- */}
+                  <Button
+                    onClick={() => onAnalyzeNote(activeNote)}
+                    disabled={isAnalyzing || !activeNote.content}
+                    className="p-2 text-slate-400 hover:text-white transition-colors"
+                    aria-label="Analyze Note"
+                    title="Analyze Tags & Concepts"
+                  >
+                    {isAnalyzing ? <Spinner size={16} /> : <Wand2 size={16} className="text-amber-400" />}
+                  </Button>
+
+                  {/* --- Generate Quiz Button (New) --- */}
+                  <Button
+                    onClick={() => onGenerateQuiz(activeNote)}
+                    disabled={isQuizGenerating || !activeNote.content}
+                    className="p-2 text-slate-400 hover:text-white transition-colors"
+                    aria-label="Generate Quiz"
+                    title="Generate AI Quiz"
+                  >
+                    {isQuizGenerating ? <Spinner size={16} /> : <Brain size={16} className="text-rose-400" />}
+                  </Button>
+
+                  {/* --- Generate Flashcards Button --- */}
                   <Button
                     onClick={() => onGenerateSingleNoteFlashcards(activeNote)}
                     disabled={isSingleGenerating === activeNote.id || (activeNote.type === 'text' && !activeNote.content) || (!activeNote.content)}
@@ -467,6 +570,17 @@ const NotesView: React.FC<{
                     title="Generate Flashcards"
                   >
                     {isSingleGenerating === activeNote.id ? <Spinner size={16} /> : <Layers size={16} />}
+                  </Button>
+
+                  {/* --- Summarize Button --- */}
+                  <Button
+                    onClick={() => onSummarize(activeNote)}
+                    disabled={isSummarizing || !activeNote.content}
+                    className="p-2 text-slate-400 hover:text-white transition-colors"
+                    aria-label="Summarize Note"
+                    title="Generate Summary"
+                  >
+                    {isSummarizing ? <Spinner size={16} /> : <FileText size={16} />}
                   </Button>
 
                   {/* --- Study with AI Button --- */}
@@ -521,6 +635,20 @@ const NotesView: React.FC<{
                 />
               ) : (
                 <div className="p-4">
+                  {/* Analysis Results Display */}
+                  {(activeNote.tags?.length ? activeNote.tags.length > 0 : false || activeNote.concepts?.length ? activeNote.concepts.length > 0 : false) && (
+                    <div className="mb-4 flex flex-wrap gap-2">
+                      {activeNote.tags?.map(tag => (
+                        <span key={tag} className="px-2 py-1 bg-slate-700 text-slate-300 text-xs rounded-full border border-slate-600">#{tag}</span>
+                      ))}
+                      {activeNote.concepts?.map(concept => (
+                        <span key={concept} className="px-2 py-1 bg-indigo-900/50 text-indigo-300 text-xs rounded-full border border-indigo-700/50 flex items-center gap-1">
+                          <Lightbulb size={10} /> {concept}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
                   {activeNote.type === 'text' && (
                     <div className="prose prose-invert max-w-none whitespace-pre-wrap">{activeNote.content || <p className="text-slate-400">This note is empty. Click 'Edit' to start writing.</p>}</div>
                   )}
@@ -545,99 +673,53 @@ const NotesView: React.FC<{
       </div>
     );
   };
-// --- END REPLACEMENT ---
 
 
-// --- AddNoteModal Sub-Component (MODIFIED) ---
+// --- AddNoteModal Sub-Component ---
 const AddNoteModal: React.FC<{ isOpen: boolean, onClose: () => void, courseId: string, onNoteAdded: () => void }> = ({
   isOpen, onClose, courseId, onNoteAdded
 }) => {
-  // --- FIX: Removed noteType state, default to 'file' ---
-  // const [noteType, setNoteType] = useState<'text' | 'file'>('text');
-  const noteType = 'file'; // Always assume file upload
-  // --- END FIX ---
+  const noteType = 'file';
   const [title, setTitle] = useState('');
-  // --- FIX: Removed content state for text notes ---
-  // const [content, setContent] = useState('');
-  // --- END FIX ---
   const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // --- FIX: Simplified check, only requires courseId and file ---
     if (!courseId || !file) return;
-    // --- END FIX ---
 
     setIsSubmitting(true);
     try {
-      // --- FIX: Removed text note logic ---
-      // if (noteType === 'file' && file) {
       await uploadNoteFile(courseId, title || file.name, file);
-      // } else if (noteType === 'text') {
-      //     await addTextNote(courseId, title, content);
-      // }
-      // --- END FIX ---
-      onNoteAdded(); // Refresh the notes list
+      onNoteAdded();
     } catch (error) {
       console.error("Failed to add note:", error);
       alert("Failed to add the note. Please try again.");
     } finally {
       setIsSubmitting(false);
-      // Reset local state *before* closing to avoid flicker
       setTitle('');
-      // setContent(''); // Removed
       setFile(null);
-      // setNoteType('text'); // Removed
       onClose();
     }
   };
 
-  // Reset internal state when the modal is closed externally
   useEffect(() => {
     if (!isOpen) {
       setTitle('');
-      // setContent(''); // Removed
       setFile(null);
-      // setNoteType('text'); // Removed
       setIsSubmitting(false);
     }
   }, [isOpen]);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add New Resource File"> {/* Changed Title */}
+    <Modal isOpen={isOpen} onClose={onClose} title="Add New Resource File">
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* --- FIX: Removed Text/File toggle buttons --- */}
-        {/* <div className="flex justify-center bg-slate-700 rounded-lg p-1">
-            <Button type="button" onClick={() => setNoteType('text')} className={`w-1/2 ${noteType === 'text' ? 'bg-violet-600' : 'bg-transparent'}`}>
-              Text Note
-            </Button>
-            <Button type="button" onClick={() => setNoteType('file')} className={`w-1/2 ${noteType === 'file' ? 'bg-violet-600' : 'bg-transparent'}`}>
-              Upload File
-            </Button>
-          </div> */}
-        {/* --- END FIX --- */}
-
         <Input
-          placeholder="Title (Optional - uses filename if blank)" // Changed placeholder
+          placeholder="Title (Optional - uses filename if blank)"
           value={title}
           onChange={e => setTitle(e.target.value)}
-        // required // Title is now optional
         />
 
-        {/* --- FIX: Removed Textarea input --- */}
-        {/* {noteType === 'text' && (
-            <Textarea
-              placeholder="Write your note or doubt here..."
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              rows={6}
-            />
-          )} */}
-        {/* --- END FIX --- */}
-
-        {/* --- FIX: File input is now always visible --- */}
-        {/* {noteType === 'file' && ( */}
         <div className="flex items-center justify-center w-full">
           <label htmlFor="modal-file-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-600 border-dashed rounded-lg cursor-pointer bg-slate-700/50 hover:bg-slate-700">
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
@@ -652,18 +734,14 @@ const AddNoteModal: React.FC<{ isOpen: boolean, onClose: () => void, courseId: s
               className="hidden"
               onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
               accept=".txt,.md,.pdf,.pptx,.mp3,.wav,.ogg,.aac"
-              required // Make file input required
+              required
             />
           </label>
         </div>
-        {/* )} */}
-        {/* --- END FIX --- */}
 
-        {/* --- FIX: Simplified disabled check --- */}
         <Button type="submit" isLoading={isSubmitting} className="w-full" disabled={isSubmitting || !file}>
-          {isSubmitting ? 'Uploading...' : 'Upload File'} {/* Changed Button Text */}
+          {isSubmitting ? 'Uploading...' : 'Upload File'}
         </Button>
-        {/* --- END FIX --- */}
       </form>
     </Modal>
   );
@@ -683,14 +761,13 @@ const FlashcardsView: React.FC<{
 }) => {
     const [reviewFlashcards, setReviewFlashcards] = useState<FlashcardType[]>([]);
     const [isReviewing, setIsReviewing] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null); // Ref for hidden file input
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (file) {
         onGenerateFromFile(file);
       }
-      // Reset file input to allow uploading the same file again
       if (event.target) {
         event.target.value = '';
       }
@@ -715,7 +792,6 @@ const FlashcardsView: React.FC<{
 
     return (
       <div className="p-6 overflow-y-auto">
-        {/* Hidden file input */}
         <input
           type="file"
           ref={fileInputRef}
@@ -725,20 +801,17 @@ const FlashcardsView: React.FC<{
         />
 
         <div className="flex gap-4 mb-6">
-          {/* Button to generate from existing notes */}
           <Button onClick={onGenerateFromNotes} disabled={isGenerating || isFileGenerating} isLoading={isGenerating}>
             Generate from All Notes
           </Button>
-          {/* Button to trigger file upload and generation */}
           <Button
             onClick={() => fileInputRef.current?.click()}
             disabled={isGenerating || isFileGenerating}
             isLoading={isFileGenerating}
-            variant="secondary" // Use a different style maybe
+            variant="secondary"
           >
             <Upload size={16} className="mr-2" /> Generate from File
           </Button>
-          {/* Review button */}
           <Button onClick={startReview} variant="outline" disabled={flashcards.length === 0 || isGenerating || isFileGenerating}>
             Review Due Cards
           </Button>
@@ -777,7 +850,7 @@ const FlashcardPlayer: React.FC<{ flashcards: FlashcardType[], onComplete: () =>
       setCurrentIndex(currentIndex + 1);
       setIsFlipped(false);
     } else {
-      onComplete(); // Close after the last card
+      onComplete();
     }
   };
 
@@ -786,53 +859,47 @@ const FlashcardPlayer: React.FC<{ flashcards: FlashcardType[], onComplete: () =>
     return (
       <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 animate-in fade-in-50" onClick={onComplete}>
         <div className="bg-slate-800 p-8 rounded-lg text-center" onClick={e => e.stopPropagation()}>
-          <p className="text-xl text-white">No flashcards are due for review today!</p>
-          <p className="text-slate-400 mb-6">Check back later or review all cards from the main page.</p>
-          <Button onClick={onComplete} className="mt-4">Close</Button>
+          <h3 className="text-xl font-bold text-white mb-4">No cards due for review!</h3>
+          <p className="text-slate-400 mb-6">Good job! check back later.</p>
+          <Button onClick={onComplete}>Close</Button>
         </div>
       </div>
     )
   }
 
-  const card = flashcards[currentIndex];
+  const currentCard = flashcards[currentIndex];
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex flex-col items-center justify-center z-50 animate-in fade-in-50">
-      <button onClick={onComplete} className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors">
-        <X size={24} />
-      </button>
-      <div
-        className="relative w-full max-w-2xl h-80"
-        style={{ perspective: '1000px' }}
-      >
-        <div
-          className={`relative w-full h-full transition-transform duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}
-        >
-          {/* Front */}
-          <div className="absolute w-full h-full bg-slate-700 rounded-lg flex items-center justify-center p-8 text-center backface-hidden">
-            <p className="text-2xl text-white">{card.front}</p>
-          </div>
-          {/* Back */}
-          <div className="absolute w-full h-full bg-sky-600 rounded-lg flex items-center justify-center p-8 text-center rotate-y-180 backface-hidden">
-            <p className="text-2xl text-white">{card.back}</p>
+    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4" onClick={onComplete}>
+      <div className="w-full max-w-2xl bg-slate-900 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-slate-700" onClick={e => e.stopPropagation()}>
+        <div className="p-4 border-b border-slate-700 flex justify-between items-center">
+          <span className="text-slate-400 text-sm">Card {currentIndex + 1} of {flashcards.length}</span>
+          <button onClick={onComplete} className="text-slate-400 hover:text-white"><X size={20} /></button>
+        </div>
+
+        <div className="p-12 min-h-[300px] flex items-center justify-center cursor-pointer" onClick={() => setIsFlipped(!isFlipped)}>
+          <div className="text-center">
+            <p className="text-sm uppercase tracking-wider text-violet-400 mb-4 font-bold">{isFlipped ? 'ANSWER' : 'QUESTION'}</p>
+            <p className="text-2xl text-slate-100 font-medium leading-relaxed">
+              {isFlipped ? currentCard.back : currentCard.front}
+            </p>
+            <p className="text-xs text-slate-500 mt-8">(Click card to flip)</p>
           </div>
         </div>
-      </div>
 
-      <p className="text-slate-300 mt-4 text-sm">Card {currentIndex + 1} of {flashcards.length}</p>
-
-      <div className="absolute bottom-10 flex gap-4">
-        {!isFlipped ? (
-          <Button onClick={() => setIsFlipped(true)} className="px-10 py-3 text-lg">Flip</Button>
-        ) : (
-          <>
-            <Button onClick={() => handleNext(false)} className="bg-red-600 hover:bg-red-700 px-8 py-3 text-lg">Incorrect</Button>
-            <Button onClick={() => handleNext(true)} className="bg-green-600 hover:bg-green-700 px-8 py-3 text-lg">Correct</Button>
-          </>
+        {isFlipped && (
+          <div className="p-6 bg-slate-800 border-t border-slate-700 flex gap-4 justify-center">
+            <Button onClick={() => handleNext(false)} variant="outline" className="border-red-500/50 text-red-400 hover:bg-red-500/10 hover:text-red-300 w-32">
+              Forgot
+            </Button>
+            <Button onClick={() => handleNext(true)} className="bg-green-600 hover:bg-green-500 w-32">
+              Recall
+            </Button>
+          </div>
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
 export default Notes;
