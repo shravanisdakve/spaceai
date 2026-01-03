@@ -11,7 +11,8 @@ import {
     Timestamp,
     serverTimestamp,
     orderBy,
-    limit
+    limit,
+    getDoc
 } from 'firebase/firestore';
 
 // --- Session Tracking ---
@@ -39,14 +40,26 @@ export const endSession = async (sessionId: string | null) => {
     if (!sessionId) return;
     try {
         const sessionDocRef = doc(db, 'sessions', sessionId);
-        const endTime = new Date();
-        // To calculate duration, we need the start time. This logic is better handled on the client or via a cloud function.
-        // For simplicity here, we'll just mark the end time. A better implementation would fetch the doc, get startTime, then update.
-        await updateDoc(sessionDocRef, {
-            endTime: Timestamp.fromDate(endTime),
-            // Duration calculation would ideally be done via a cloud function or by reading the doc first.
-            // This part of the logic remains tricky without a read.
-        });
+        const sessionSnap = await import('firebase/firestore').then(mod => mod.getDoc(sessionDocRef)); // Dynamic import to ensure getDoc is available if not imported top-level
+
+        if (sessionSnap.exists()) {
+            const data = sessionSnap.data();
+            if (data.startTime) {
+                const startTime = data.startTime.toDate(); // timestamp to Date
+                const endTime = new Date();
+                const durationSeconds = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
+
+                await updateDoc(sessionDocRef, {
+                    endTime: serverTimestamp(),
+                    duration: durationSeconds
+                });
+                console.log(`Session ended. Duration: ${durationSeconds}s`);
+            } else {
+                await updateDoc(sessionDocRef, {
+                    endTime: serverTimestamp(),
+                });
+            }
+        }
     } catch (error) {
         console.error("Error ending session in Firestore:", error);
     }

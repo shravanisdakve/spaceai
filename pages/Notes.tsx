@@ -5,7 +5,7 @@ import { getCourses, addCourse } from '../services/courseService';
 import { getNotes, addTextNote, uploadNoteFile, deleteNote, getFlashcards, addFlashcards, updateFlashcard, updateNoteContent } from '../services/notesService';
 import { type Note, type Course, type Flashcard as FlashcardType } from '../types';
 import { PageHeader, Button, Input, Textarea, Select, Modal, Spinner } from '../components/Common/ui';
-import { PlusCircle, Trash2, Upload, FileText, BookOpen, Layers, X, Brain, Edit, Save, ArrowLeft, Download, Eye, EyeOff, Wand2, Lightbulb } from 'lucide-react';
+import { PlusCircle, Trash2, Upload, FileText, BookOpen, Layers, X, Brain, Edit, Save, ArrowLeft, Download, Eye, EyeOff, Wand2, Lightbulb, GraduationCap } from 'lucide-react';
 import { generateFlashcards, extractTextFromFile, summarizeText, generateQuizFromContent, analyzeNoteContent } from '../services/geminiService';
 import DOMPurify from 'dompurify';
 import { useNavigate } from 'react-router-dom';
@@ -589,8 +589,9 @@ const NotesView: React.FC<{
                       onClick={() => navigate('/tutor', { state: { noteContent: activeNote.content } })}
                       className="p-2 text-slate-400 hover:text-white transition-colors"
                       aria-label="Study with AI"
-                      title="Study with AI">
-                      <Brain size={16} />
+                      title="Study with AI"
+                    >
+                      <GraduationCap size={16} className="text-indigo-400" />
                     </Button>
                   )}
 

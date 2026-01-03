@@ -7,7 +7,8 @@ import { getTutors, type TutorProfile, streamLocalChat } from '../services/local
 import { getAvailableAnalysisDomains, analyzeTextWithPythonBackend, analyzeTextWithNodeBackendChatProxy, type AnalysisRequest, type AnalysisResponse } from '../services/domainAnalysisService';
 import { trackToolUsage } from '../services/personalizationService';
 import { startSession, endSession, recordQuizResult, getProductivityReport } from '../services/analyticsService';
-import { Bot, User, Send, Mic, Volume2, VolumeX, Lightbulb } from 'lucide-react';
+import { Bot, User, Send, Mic, Volume2, VolumeX, Lightbulb, X, StickyNote } from 'lucide-react';
+import { streamStudyBuddyChat, generateQuizQuestion, streamChat } from '../services/geminiService';
 
 interface Quiz {
     topic: string;
@@ -29,16 +30,16 @@ const ChatItem: React.FC<{ message: ChatMessage; onSpeak: (text: string) => void
                 </div>
             )}
             <div className={`flex flex-col gap-2 max-w-xl`}>
-                 <div className={`p-4 rounded-2xl ${isModel ? 'bg-slate-800 rounded-tl-none' : 'bg-sky-600 text-white rounded-br-none'}`}>
+                <div className={`p-4 rounded-2xl ${isModel ? 'bg-slate-800 rounded-tl-none' : 'bg-sky-600 text-white rounded-br-none'}`}>
                     <div className="prose prose-invert prose-sm" style={{ whiteSpace: 'pre-wrap' }}>{text}</div>
                 </div>
                 {isModel && text && (
-                     <button onClick={() => onSpeak(text)} className="flex items-center gap-1 text-xs text-slate-400 hover:text-violet-400 transition-colors self-start ml-2">
+                    <button onClick={() => onSpeak(text)} className="flex items-center gap-1 text-xs text-slate-400 hover:text-violet-400 transition-colors self-start ml-2">
                         <Volume2 size={14} /> Listen
                     </button>
                 )}
             </div>
-             {!isModel && (
+            {!isModel && (
                 <div className="flex-shrink-0 w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
                     <User className="w-6 h-6 text-slate-300" />
                 </div>
@@ -69,7 +70,7 @@ const AiTutor: React.FC = () => {
             // Fetch tutors
             const fetchedTutors = await getTutors();
             setTutors(fetchedTutors);
-            
+
             // Fetch analysis domains
             const fetchedAnalysisDomains = await getAvailableAnalysisDomains();
             setAvailableAnalysisDomains(fetchedAnalysisDomains);
@@ -92,12 +93,15 @@ const AiTutor: React.FC = () => {
             return false;
         }
     });
-    
+
     const recognitionRef = useRef<any | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const location = useLocation();
     const navigate = useNavigate();
     const proactiveMessageSent = useRef(false);
+
+    // --- STUDY BUDDY STATE ---
+    const [activeNoteContent, setActiveNoteContent] = useState<string | null>(location.state?.noteContent || null);
 
     useEffect(() => {
         trackToolUsage('tutor');
@@ -125,7 +129,7 @@ const AiTutor: React.FC = () => {
                 const weakestTopic = report.weaknesses[0];
                 initialPrompt = `Hello! I'm your AI Tutor. I noticed your quiz accuracy in '${weakestTopic.topic}' is around ${weakestTopic.accuracy}%. Would you like to review it? We could try the Feynman Technique, or I can quiz you to practice active recall.`;
             }
-            
+
             setMessages([{ role: 'model', parts: [{ text: initialPrompt }] }]);
             proactiveMessageSent.current = true;
         };
@@ -178,7 +182,7 @@ const AiTutor: React.FC = () => {
             console.error("Failed to save auto-speak setting to localStorage", error);
         }
     }, [isAutoSpeaking]);
-    
+
     const handleSpeak = (text: string) => {
         if (speechSynthesis.speaking) {
             speechSynthesis.cancel();
@@ -191,11 +195,11 @@ const AiTutor: React.FC = () => {
     const handleSend = useCallback(async (messageToSend?: string, isVoiceInput = false) => {
         const currentMessage = messageToSend || input;
         if (!currentMessage.trim() || isLoading) return;
-        
+
         speechSynthesis.cancel();
-        
+
         const newUserMessage: ChatMessage = { role: 'user', parts: [{ text: currentMessage }] };
-        setMessages(prev => [...prev, newUserMessage]); // Add user message immediately
+        setMessages(prev => [...prev, newUserMessage]);
         setInput('');
         setIsLoading(true);
         setError(null);
@@ -204,12 +208,20 @@ const AiTutor: React.FC = () => {
         try {
             let modelResponseContent = '';
             if (mode === 'tutor') {
-                const newModelMessage: ChatMessage = { role: 'model', parts: [{ text: '' }] }; // Placeholder for model response
+                const newModelMessage: ChatMessage = { role: 'model', parts: [{ text: '' }] };
                 setMessages(prev => [...prev, newModelMessage]);
-                const stream = await streamLocalChat([...messages, newUserMessage], selectedDomainId); // selectedTutorId is now selectedDomainId
-                
+
+                let stream;
+                // --- STUDY BUDDY LOGIC ---
+                if (activeNoteContent) {
+                    stream = await streamStudyBuddyChat(currentMessage, activeNoteContent);
+                } else {
+                    // Fallback to local or generic chat if no notes
+                    stream = await streamLocalChat([...messages, newUserMessage], selectedDomainId);
+                }
+
                 for await (const chunk of stream) {
-                    modelResponseContent += chunk.text;
+                    modelResponseContent += chunk.text; // Ensure your service returns objects with .text property
                     setMessages(prev => {
                         const newMessages = [...prev];
                         const lastMessage = newMessages[newMessages.length - 1];
@@ -219,25 +231,25 @@ const AiTutor: React.FC = () => {
                         return newMessages;
                     });
                 }
-            } else { // Analysis mode
-                // For analysis, we don't stream, we get a full response
+            } else {
+                // ... Analysis logic (unchanged) ...
                 const analysisRequest: AnalysisRequest = {
                     text: currentMessage,
                     domain: selectedDomainId,
                     queryType: selectedDomainId,
-                    model_size: '8b', // Hardcoded for now
-                    advanced_analysis: true, // Hardcoded for now
+                    model_size: '8b',
+                    advanced_analysis: true,
                     context: {
                         subject: selectedDomainId,
-                        level: 'intermediate', // Hardcoded for now
-                        format: 'text', // Hardcoded for now
+                        level: 'intermediate',
+                        format: 'text',
                     }
                 };
 
                 let analysisResult: AnalysisResponse;
                 if (backendType === 'python') {
                     analysisResult = await analyzeTextWithPythonBackend(analysisRequest);
-                } else { // nodejs
+                } else {
                     analysisResult = await analyzeTextWithNodeBackendChatProxy(
                         currentMessage,
                         selectedDomainId,
@@ -250,13 +262,13 @@ const AiTutor: React.FC = () => {
                     setError(modelResponseContent);
                 } else {
                     modelResponseContent = `**Analysis Summary for ${selectedDomainId}:**\n\n${analysisResult.summary}\n\n` +
-                                           `**Learning Roadmap:**\n${analysisResult.roadmap}\n\n` +
-                                           (analysisResult.key_concepts ? `**Key Concepts:** ${analysisResult.key_concepts.join(', ')}\n\n` : '') +
-                                           (analysisResult.difficulty_level ? `**Difficulty:** ${analysisResult.difficulty_level}\n\n` : '');
+                        `**Learning Roadmap:**\n${analysisResult.roadmap}\n\n` +
+                        (analysisResult.key_concepts ? `**Key Concepts:** ${analysisResult.key_concepts.join(', ')}\n\n` : '') +
+                        (analysisResult.difficulty_level ? `**Difficulty:** ${analysisResult.difficulty_level}\n\n` : '');
                 }
                 setMessages(prev => [...prev, { role: 'model', parts: [{ text: modelResponseContent }] }]);
             }
-            
+
             if (modelResponseContent && (isAutoSpeaking || isVoiceInput)) {
                 handleSpeak(modelResponseContent);
             }
@@ -268,14 +280,14 @@ const AiTutor: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [input, isLoading, isAutoSpeaking, mode, selectedDomainId, backendType, messages]);
+    }, [input, isLoading, isAutoSpeaking, mode, selectedDomainId, backendType, messages, activeNoteContent]);
 
     const handleQuizMe = async () => {
         if (isLoading) return;
         setError(null);
         setIsLoading(true);
         setQuiz(null);
-        
+
         const context = messages.map(m => `${m.role}: ${m.parts.map(p => p.text).join('')}`).join('\n');
         setMessages(prev => [...prev, { role: 'model', parts: [{ text: "Of course! Here's a question for you..." }] }]);
 
@@ -290,20 +302,20 @@ const AiTutor: React.FC = () => {
             setIsLoading(false);
         }
     };
-    
+
     const handleAnswerQuiz = async (selectedIndex: number) => {
         if (!quiz) return;
-        
+
         const isCorrect = selectedIndex === quiz.correctOptionIndex;
         await recordQuizResult(quiz.topic, isCorrect, selectedCourse);
-        
+
         let feedbackMessage = '';
         if (isCorrect) {
             feedbackMessage = `Correct! Well done.`;
         } else {
             feedbackMessage = `Not quite. The correct answer was: "${quiz.options[quiz.correctOptionIndex]}"`;
         }
-        
+
         setMessages(prev => [...prev, { role: 'model', parts: [{ text: feedbackMessage }] }]);
         setQuiz(prev => prev ? { ...prev, userAnswerIndex: selectedIndex } : null);
         setTimeout(() => setQuiz(null), 3000); // Hide quiz after 3 seconds
@@ -333,7 +345,7 @@ const AiTutor: React.FC = () => {
             recognition.stop();
             return;
         }
-        
+
         setError(null);
 
         let finalTranscript = '';
@@ -349,7 +361,7 @@ const AiTutor: React.FC = () => {
             }
             setInput(finalTranscript + interimTranscript);
         };
-        
+
         recognition.onend = () => {
             setIsListening(false);
             if (finalTranscript.trim()) {
@@ -378,9 +390,9 @@ const AiTutor: React.FC = () => {
     return (
         <div className="h-full flex flex-col">
             <div className="flex justify-between items-center">
-                <PageHeader 
-                    title={mode === 'tutor' ? "AI Tutor" : "Document Analyzer"} 
-                    subtitle={mode === 'tutor' ? "Your personal AI guide for any subject." : "Analyze text with domain-specific AI models."} 
+                <PageHeader
+                    title={mode === 'tutor' ? "AI Tutor" : "Document Analyzer"}
+                    subtitle={mode === 'tutor' ? "Your personal AI guide for any subject." : "Analyze text with domain-specific AI models."}
                 />
                 <div className="flex items-center gap-4">
                     {/* Mode Toggle */}
@@ -400,27 +412,27 @@ const AiTutor: React.FC = () => {
                     </div>
 
                     {/* Domain Selector */}
-                    <select 
-                       value={selectedDomainId} 
-                       onChange={(e) => setSelectedDomainId(e.target.value)}
-                       className="bg-slate-800 text-slate-200 text-xs p-2 rounded-lg border border-slate-700"
+                    <select
+                        value={selectedDomainId}
+                        onChange={(e) => setSelectedDomainId(e.target.value)}
+                        className="bg-slate-800 text-slate-200 text-xs p-2 rounded-lg border border-slate-700"
                     >
-                       {mode === 'tutor' && tutors.map(t => (
-                           <option key={t.id} value={t.id}>
-                               {t.display_name} ({t.topic})
-                           </option>
-                       ))}
-                       {mode === 'analysis' && availableAnalysisDomains.map(d => (
-                           <option key={d.id} value={d.id}>
-                               {d.display_name}
-                           </option>
-                       ))}
-                   </select>
+                        {mode === 'tutor' && tutors.map(t => (
+                            <option key={t.id} value={t.id}>
+                                {t.display_name} ({t.topic})
+                            </option>
+                        ))}
+                        {mode === 'analysis' && availableAnalysisDomains.map(d => (
+                            <option key={d.id} value={d.id}>
+                                {d.display_name}
+                            </option>
+                        ))}
+                    </select>
 
                     {/* Backend Type Selector (only for analysis mode) */}
                     {mode === 'analysis' && (
-                        <select 
-                            value={backendType} 
+                        <select
+                            value={backendType}
                             onChange={(e) => setBackendType(e.target.value as 'python' | 'nodejs')}
                             className="bg-slate-800 text-slate-200 text-xs p-2 rounded-lg border border-slate-700"
                         >
@@ -432,14 +444,36 @@ const AiTutor: React.FC = () => {
                 </div>
             </div>
             <div className="flex-1 bg-slate-800/50 rounded-xl p-4 flex flex-col overflow-hidden ring-1 ring-slate-700">
+                {activeNoteContent && mode === 'tutor' && (
+                    <div className="bg-indigo-900/50 border border-indigo-700/50 rounded-lg p-3 mb-4 flex items-center justify-between animate-in slide-in-from-top-2">
+                        <div className="flex items-center gap-2">
+                            <StickyNote className="w-5 h-5 text-indigo-400" />
+                            <div>
+                                <p className="text-sm font-semibold text-indigo-200">Study Buddy Mode Active</p>
+                                <p className="text-xs text-indigo-300">Answering correctly based on your Active Note.</p>
+                            </div>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto p-1 text-indigo-300 hover:text-white hover:bg-indigo-800/50"
+                            onClick={() => {
+                                setActiveNoteContent(null);
+                                setMessages(prev => [...prev, { role: 'model', parts: [{ text: "I've cleared the note context. I'm back to being your general AI Tutor." }] }]);
+                            }}
+                        >
+                            <X size={16} />
+                        </Button>
+                    </div>
+                )}
                 <div className="flex-1 overflow-y-auto pr-2">
                     {messages.map((msg, index) => <ChatItem key={index} message={msg} onSpeak={handleSpeak} />)}
                     {isLoading && !quiz && (
                         <div className="flex items-start gap-4 my-4">
-                             <div className="flex-shrink-0 w-10 h-10 rounded-full bg-violet-600 flex items-center justify-center">
+                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-violet-600 flex items-center justify-center">
                                 <Bot className="w-6 h-6 text-white" />
                             </div>
-                             <div className="max-w-xl p-4 rounded-2xl bg-slate-800 rounded-tl-none">
+                            <div className="max-w-xl p-4 rounded-2xl bg-slate-800 rounded-tl-none">
                                 <div className="loading-dot">
                                     <span className="inline-block w-2 h-2 bg-slate-400 rounded-full"></span>
                                     <span className="inline-block w-2 h-2 bg-slate-400 rounded-full ml-1"></span>
@@ -448,7 +482,7 @@ const AiTutor: React.FC = () => {
                             </div>
                         </div>
                     )}
-                     {quiz && (
+                    {quiz && (
                         <div className="my-4 p-4 bg-slate-900/50 rounded-xl ring-1 ring-violet-600/50 animate-in fade-in-50">
                             <p className="font-semibold text-slate-200 text-base mb-1">Topic: <span className="capitalize font-light">{quiz.topic}</span></p>
                             <p className="font-bold text-slate-100 text-lg">{quiz.question}</p>
@@ -458,14 +492,14 @@ const AiTutor: React.FC = () => {
                                     const isCorrect = quiz.correctOptionIndex === index;
                                     let buttonClass = 'bg-slate-700 hover:bg-slate-600';
                                     if (quiz.userAnswerIndex !== undefined) {
-                                       if (isCorrect) buttonClass = 'bg-green-500/80 ring-2 ring-green-400';
-                                       else if (isSelected && !isCorrect) buttonClass = 'bg-red-500/80';
-                                       else buttonClass = 'bg-slate-800/50 opacity-60';
+                                        if (isCorrect) buttonClass = 'bg-green-500/80 ring-2 ring-green-400';
+                                        else if (isSelected && !isCorrect) buttonClass = 'bg-red-500/80';
+                                        else buttonClass = 'bg-slate-800/50 opacity-60';
                                     }
                                     return (
-                                        <button 
-                                            key={index} 
-                                            onClick={() => handleAnswerQuiz(index)} 
+                                        <button
+                                            key={index}
+                                            onClick={() => handleAnswerQuiz(index)}
                                             disabled={quiz.userAnswerIndex !== undefined}
                                             className={`p-3 text-left text-sm rounded-lg transition-all duration-200 ${buttonClass}`}
                                         >
@@ -489,33 +523,33 @@ const AiTutor: React.FC = () => {
                         disabled={isLoading || !!quiz}
                         className="flex-1"
                     />
-                     {mode === 'tutor' && (
-                         <Button 
+                    {mode === 'tutor' && (
+                        <Button
                             onClick={handleQuizMe}
                             disabled={isLoading || !!quiz}
                             className="px-4 py-3 bg-slate-700 hover:bg-slate-600"
                             aria-label="Quiz me"
-                         >
+                        >
                             <Lightbulb className="w-5 h-5" />
                         </Button>
-                     )}
-                     <Button 
-                        onClick={handleListen} 
-                        disabled={isLoading || !!quiz} 
+                    )}
+                    <Button
+                        onClick={handleListen}
+                        disabled={isLoading || !!quiz}
                         className={`px-4 py-3 ${isListening ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-700 hover:bg-slate-600'}`}
                         aria-label={isListening ? 'Stop listening' : 'Start listening'}
                     >
-                       <Mic className="w-5 h-5" />
+                        <Mic className="w-5 h-5" />
                     </Button>
-                     <Button
+                    <Button
                         onClick={() => setIsAutoSpeaking(prev => !prev)}
                         className={`px-4 py-3 ${isAutoSpeaking ? 'bg-violet-600 hover:bg-violet-700' : 'bg-slate-700 hover:bg-slate-600'}`}
                         aria-label={isAutoSpeaking ? 'Disable automatic speaking' : 'Enable automatic speaking'}
                     >
-                       {isAutoSpeaking ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                        {isAutoSpeaking ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
                     </Button>
                     <Button onClick={() => handleSend()} isLoading={isLoading} disabled={!input.trim() || !!quiz} className="px-4 py-3">
-                       {!isLoading && <Send className="w-5 h-5" />}
+                        {!isLoading && <Send className="w-5 h-5" />}
                     </Button>
                 </div>
             </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PageHeader, Button, Input, Skeleton } from '../components/Common/ui';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 import { type Course, type Mood as MoodType } from '../types';
 import { getTimeOfDayGreeting, getMostUsedTool } from '../services/personalizationService';
 import { getProductivityReport } from '../services/analyticsService';
@@ -113,105 +114,58 @@ const MyCourses: React.FC = () => {
 
 
 
+    const { showToast } = useToast(); // Needs to be inside MyCourses component, import useToast first
+
     const fetchCourses = async (loadMore: boolean = false) => {
-
         setIsLoading(true);
-
         console.log("MyCourses: Fetching courses...");
-
         try {
-
             const { courses: newCourses, lastVisibleDocId: newLastVisibleDocId } = await getCourses(loadMore ? lastVisibleDocId : null, COURSE_LIMIT);
-
-
-
             setCourses(prev => loadMore ? [...prev, ...(newCourses || [])] : (newCourses || []));
-
             setLastVisibleDocId(newLastVisibleDocId);
-
-            setHasMoreCourses((newCourses || []).length === COURSE_LIMIT); // If we fetched less than limit, no more courses
-
-
-
+            setHasMoreCourses((newCourses || []).length === COURSE_LIMIT);
         } catch (error) {
-
             console.error("Error fetching courses:", error);
-
+            showToast("Failed to load courses.", 'error');
         } finally {
-
             setIsLoading(false);
-
         }
-
     };
 
-
-
     useEffect(() => {
-
         fetchCourses();
-
     }, []);
 
-
-
     const handleAddCourse = async (e: React.FormEvent) => {
-
         e.preventDefault();
-
         if (newCourseName.trim()) {
-
             console.log("MyCourses: Adding course:", newCourseName);
-
             try {
-
                 const newCourse = await addCourse(newCourseName.trim());
-
                 if (newCourse) {
-
                     console.log("MyCourses: Added course:", newCourse);
-
-                    // Re-fetch all courses to ensure correct order and pagination state
-
                     fetchCourses();
-
+                    showToast("Course added successfully!", 'success');
                 }
-
                 setNewCourseName('');
-
                 setIsAdding(false);
-
             } catch (error) {
                 console.error("Error adding course:", error);
-                alert("Failed to add course. Please try again.");
+                showToast("Failed to add course. Please try again.", 'error');
             }
-
         }
-
     }
 
-
-
     const handleDeleteCourse = async (id: string) => {
-
         console.log("MyCourses: Deleting course:", id);
-
         try {
-
             await deleteCourse(id);
-
-            // Re-fetch all courses to ensure correct order and pagination state
-
             fetchCourses();
-
+            showToast("Course deleted successfully!", 'success');
         } catch (error) {
-
             console.error("Error deleting course:", error);
-
-            // Optionally show error to user
-
+            showToast("Failed to delete course.", 'error');
         }
-
     }
 
 

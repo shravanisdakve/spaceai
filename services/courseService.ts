@@ -5,17 +5,21 @@ import { collection, query, where, getDocs, addDoc, deleteDoc, doc, serverTimest
 const API_URL = 'http://localhost:5000/api/courses';
 
 // Get all courses for the current user
-// Get all courses for the current user
 export const getCourses = async (lastVisibleId: string | null = null, limitVal: number = 10): Promise<{ courses: Course[], lastVisibleDocId: string | null }> => {
-    // We can get userId from the auth object or localStorage
     const userJson = localStorage.getItem('user');
     const user = userJson ? JSON.parse(userJson) : null;
 
-    if (!user || (!user.uid && !user.id)) {
+    if (!user) {
         console.warn("No user logged in, cannot fetch courses.");
         return { courses: [], lastVisibleDocId: null };
     }
-    const userId = user.uid || user.id;
+    // Handle both _id (backend) and uid (firebase/custom)
+    const userId = user.uid || user._id || user.id;
+
+    if (!userId) {
+        console.warn("User object found but no ID, cannot fetch courses.");
+        return { courses: [], lastVisibleDocId: null };
+    }
 
     try {
         const response = await fetch(`${API_URL}?userId=${userId}`);
@@ -34,11 +38,16 @@ export const addCourse = async (name: string): Promise<Course | null> => {
     const userJson = localStorage.getItem('user');
     const user = userJson ? JSON.parse(userJson) : null;
 
-    if (!user || (!user.uid && !user.id)) {
+    if (!user) {
         console.error("No user logged in, cannot add course.");
         return null;
     }
-    const userId = user.uid || user.id;
+    const userId = user.uid || user._id || user.id;
+
+    if (!userId) {
+        console.error("User object found but no ID, cannot add course.");
+        return null;
+    }
 
     if (!name || name.trim() === '') {
         console.error("Course name cannot be empty.");

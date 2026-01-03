@@ -26,6 +26,7 @@ const SpeedMathGame = lazy(() => import('./pages/SpeedMathGame'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const Terms = lazy(() => import('./pages/Terms'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const Profile = lazy(() => import('./pages/Profile'));
 
 
 const AuthLayout: React.FC = () => (
@@ -43,16 +44,16 @@ const MainLayout: React.FC = () => {
       <main className="flex-1 flex flex-col overflow-y-auto">
         {/* Header for mobile */}
         <div className="md:hidden flex items-center justify-between p-4 border-b border-slate-700">
-            <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSidebarOpen(true)}
-                className="p-2"
-            >
-                <Menu size={24} />
-            </Button>
-            {/* You can add a logo or page title here for mobile view */}
-            <span className="font-bold text-lg">NexusAI</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSidebarOpen(true)}
+            className="p-2"
+          >
+            <Menu size={24} />
+          </Button>
+          {/* You can add a logo or page title here for mobile view */}
+          <span className="font-bold text-lg">NexusAI</span>
         </div>
         <div className="p-4 sm:p-6 lg:p-8 h-full">
           <Outlet />
@@ -76,10 +77,10 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 const App: React.FC = () => {
   const { currentUser, loading } = useAuth();
-  
+
   if (loading) {
     return (
-       <div className="w-full h-screen flex items-center justify-center bg-slate-900">
+      <div className="w-full h-screen flex items-center justify-center bg-slate-900">
         <Spinner />
       </div>
     )
@@ -92,8 +93,8 @@ const App: React.FC = () => {
           <Suspense fallback={<div className="w-full h-screen flex items-center justify-center bg-slate-900"><Spinner /></div>}>
             <Routes>
               {currentUser ? (
-                <Route 
-                  path="/*" 
+                <Route
+                  path="/*"
                   element={
                     <MainLayout />
                   }
@@ -111,6 +112,7 @@ const App: React.FC = () => {
                   <Route path="sudoku" element={<SudokuGame />} />
                   <Route path="zip" element={<ZipGame />} />
                   <Route path="speed-math" element={<SpeedMathGame />} />
+                  <Route path="profile" element={<Profile />} />
 
                 </Route>
               ) : (

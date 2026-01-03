@@ -9,17 +9,18 @@ import React, {
 /* ===================== TYPES ===================== */
 
 export interface User {
-  uid: string;
+  _id?: string; // MongoDB ID (sometimes returned as _id)
+  uid?: string; // For backward compatibility or mapped from _id
   displayName: string | null;
   email: string | null;
   // Personal
-  photoURL?: string;
   firstName?: string;
   lastName?: string;
+  avatar?: string;
   phoneNumber?: string;
   bio?: string;
   location?: string;
-  dateOfBirth?: string;
+  dateOfBirth?: string; // ISO string 
   // Education
   university?: string;
   degree?: string;
@@ -28,11 +29,23 @@ export interface User {
   gpa?: string;
   academicGoals?: string;
   // Preferences
-  studyLanguage?: string;
-  learningStyle?: string;
-  theme?: 'light' | 'dark';
-  // Security
-  twoFactorEnabled?: boolean;
+  preferences?: {
+    studyLanguage?: string;
+    theme?: 'light' | 'dark';
+    learningPace?: string;
+    learningStyle?: string;
+    interests?: string[];
+  };
+  // Settings
+  settings?: {
+    notifications?: {
+      email: boolean;
+      push: boolean;
+      inApp: boolean;
+    };
+    twoFactorEnabled?: boolean;
+    privacy?: string;
+  };
 }
 
 interface AuthContextType {
@@ -47,7 +60,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUserProfile: (updates: Partial<User>) => Promise<void>;
-  resetPassword: (email: string) => Promise<void>; // Added to satisfy interface used in App.tsx
+  resetPassword: (email: string) => Promise<void>;
 }
 
 /* ===================== CONTEXT ===================== */
@@ -75,10 +88,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   /* ===== Auto login after page refresh ===== */
   useEffect(() => {
     const token = localStorage.getItem("token");
-    const user = localStorage.getItem("user");
+    const userStr = localStorage.getItem("user");
 
-    if (token && user) {
-      setCurrentUser(JSON.parse(user));
+    if (token && userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        // Ensure user has necessary fields
+        setCurrentUser(user);
+      } catch (e) {
+        console.error("Failed to parse user from local storage", e);
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+      }
     }
     setLoading(false);
   }, []);
@@ -97,9 +118,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          displayName, // Note: Backend currently doesn't save this in the snippet provided, but sending it anyway
+          displayName,
           email,
-          university, // Backend doesn't save this either
+          university,
           password,
         }),
       });
@@ -133,11 +154,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
       const data = await res.json();
 
+      // Backend now returns the full user object
       const user: User = {
-        uid: data.user.id || data.user._id || "user-id",
-        displayName: data.user.displayName || null, // Backend might not return this
-        email: data.user.email,
-        university: data.user.university,
+        ...data.user,
+        uid: data.user._id, // Map _id to uid for consistency if needed
       };
 
       localStorage.setItem("token", data.token);
@@ -162,18 +182,50 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const updateUserProfile = async (updates: Partial<User>) => {
     if (!currentUser) return;
 
-    const updatedUser = { ...currentUser, ...updates };
-    setCurrentUser(updatedUser);
-    localStorage.setItem("user", JSON.stringify(updatedUser));
+    // Optimistic update
+    const previousUser = currentUser;
+    const optimisticUser = { ...currentUser, ...updates };
+    setCurrentUser(optimisticUser);
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update profile");
+      }
+
+      const data = await res.json();
+      const updatedUser = {
+        ...data.user,
+        uid: data.user._id
+      };
+
+      // Confirm update with server data
+      setCurrentUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      // Revert on failure
+      setCurrentUser(previousUser);
+      // You might want to show a toast here via a callback or context
+      throw error;
+    }
   };
 
   /* ===================== RESET PASSWORD (STUB) ===================== */
   const resetPassword = async (email: string) => {
-    // Stub implementation since custom backend doesn't implement this yet
     console.log("Reset password requested for", email);
     alert("Password reset functionality is not yet implemented in the backend.");
   };
-
 
   /* ===================== VALUE ===================== */
   const value: AuthContextType = {

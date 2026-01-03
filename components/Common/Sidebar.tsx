@@ -25,10 +25,10 @@ const Sidebar: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, o
       const cacheKey = `avatar-url-${currentUser.uid}`;
       const cachedUrl = sessionStorage.getItem(cacheKey);
 
-      if (cachedUrl && !currentUser.photoURL) { // Use cache only if no custom photo
+      if (cachedUrl && !currentUser.avatar) { // Use cache only if no custom photo
         setAvatarUrl(cachedUrl);
-      } else if (currentUser.photoURL) {
-        setAvatarUrl(currentUser.photoURL);
+      } else if (currentUser.avatar) {
+        setAvatarUrl(currentUser.avatar);
       } else {
         const newUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
           currentUser.displayName || 'User'
@@ -62,8 +62,8 @@ const Sidebar: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, o
       sessionStorage.removeItem(cacheKey);
       // The useEffect will automatically regenerate the avatar URL if needed
       // If photoURL is in updates, we might need to force update local state for avatar
-      if (updates.photoURL) {
-        setAvatarUrl(updates.photoURL);
+      if (updates.avatar) {
+        setAvatarUrl(updates.avatar);
       }
     } catch (error) {
       throw error;
@@ -133,7 +133,7 @@ const Sidebar: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, o
                   variant="ghost"
                   size="sm"
                   className="p-1 text-slate-400 hover:text-white"
-                  onClick={() => setIsProfileModalOpen(true)}
+                  onClick={() => navigate('/profile')}
                   title="Edit Profile"
                   aria-label="Edit Profile"
                 >
