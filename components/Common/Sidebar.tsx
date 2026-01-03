@@ -11,6 +11,7 @@ const navigation = [
   { name: 'Notes', href: '/notes', icon: FileText },
   { name: 'AI Tutor', href: '/tutor', icon: MessageSquare },
   { name: 'Study Room', href: '/study-lobby', icon: Users },
+  { name: 'Community', href: '/social', icon: Users }, // New Link
 ];
 
 interface SidebarProps {

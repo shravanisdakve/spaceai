@@ -24,6 +24,7 @@ import { type AdaptiveRecommendation } from '../types';
 import DashboardHeader from '../components/Dashboard/DashboardHeader';
 import QuickActions from '../components/Dashboard/QuickActions';
 import RecentActivity from '../components/Dashboard/RecentActivity';
+import DailyChallengesWidget from '../components/Gamification/DailyChallengesWidget';
 
 // --- SUB COMPONENTS (Kept or Simplified) ---
 
@@ -321,6 +322,7 @@ const StudyHub: React.FC = () => {
 
                 {/* COLUMN 3: Activity & Stats (Right) - Span 3 */}
                 <div className="lg:col-span-3 space-y-6">
+                    <DailyChallengesWidget />
                     <ProductivityInsights />
                     <RecentActivity />
                     <div className="h-[400px]">

@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth, User } from '../hooks/useAuth';
 import { Button, Input, PageHeader } from '../components/Common/ui';
-import { User as UserIcon, BookOpen, Settings, Shield, Edit2, Camera, Save, X, Share2 } from 'lucide-react';
+import { User as UserIcon, BookOpen, Settings, Shield, Edit2, Camera, Save, X, Share2, Trophy } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
+import GamificationProfile from '../components/Gamification/GamificationProfile';
 
 const Profile: React.FC = () => {
     const { currentUser, updateUserProfile } = useAuth();
     const { showToast } = useToast();
-    const [activeTab, setActiveTab] = useState<'general' | 'education' | 'preferences' | 'security' | 'privacy'>('general');
+    const [activeTab, setActiveTab] = useState<'general' | 'education' | 'preferences' | 'security' | 'privacy' | 'gamification'>('general');
     const [isLoading, setIsLoading] = useState(false);
 
     // Form state - initialized from currentUser
@@ -284,13 +285,13 @@ const Profile: React.FC = () => {
                     <label className="block text-sm font-medium text-slate-400 mb-2">App Theme</label>
                     <div className="flex bg-slate-800 p-1 rounded-lg">
                         <button
-                            className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${(!formData.preferences?.theme || formData.preferences?.theme === 'dark') ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                            className={`flex - 1 py - 2 text - sm font - medium rounded - md transition - all ${(!formData.preferences?.theme || formData.preferences?.theme === 'dark') ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200'} `}
                             onClick={() => handleInputChange('preferences.theme', 'dark')}
                         >
                             Dark Mode
                         </button>
                         <button
-                            className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${(formData.preferences?.theme === 'light') ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                            className={`flex - 1 py - 2 text - sm font - medium rounded - md transition - all ${(formData.preferences?.theme === 'light') ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-slate-200'} `}
                             onClick={() => handleInputChange('preferences.theme', 'light')}
                         >
                             Light Mode
@@ -441,6 +442,17 @@ const Profile: React.FC = () => {
         </div>
     );
 
+    // Gamification Tab Wrapper
+    const GamificationTab = () => (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="mb-4">
+                <h3 className="text-xl font-bold text-white">Your Achievements</h3>
+                <p className="text-slate-400">Track your progress and badges as you learn.</p>
+            </div>
+            <GamificationProfile />
+        </div>
+    );
+
     return (
         <div className="space-y-6">
             <PageHeader
@@ -475,35 +487,42 @@ const Profile: React.FC = () => {
                 <div className="lg:col-span-1 space-y-2">
                     <button
                         onClick={() => setActiveTab('general')}
-                        className={`w-full flex items-center p-3 rounded-lg transition-all ${activeTab === 'general' ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                        className={`w - full flex items - center p - 3 rounded - lg transition - all ${activeTab === 'general' ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'} `}
                     >
                         <UserIcon size={18} className="mr-3" />
                         General
                     </button>
                     <button
                         onClick={() => setActiveTab('education')}
-                        className={`w-full flex items-center p-3 rounded-lg transition-all ${activeTab === 'education' ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                        className={`w - full flex items - center p - 3 rounded - lg transition - all ${activeTab === 'education' ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'} `}
                     >
                         <BookOpen size={18} className="mr-3" />
                         Education
                     </button>
                     <button
                         onClick={() => setActiveTab('preferences')}
-                        className={`w-full flex items-center p-3 rounded-lg transition-all ${activeTab === 'preferences' ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                        className={`w - full flex items - center p - 3 rounded - lg transition - all ${activeTab === 'preferences' ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'} `}
                     >
                         <Edit2 size={18} className="mr-3" />
                         Preferences
                     </button>
                     <button
+                        onClick={() => setActiveTab('gamification')}
+                        className={`w - full flex items - center p - 3 rounded - lg transition - all ${activeTab === 'gamification' ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'} `}
+                    >
+                        <Trophy size={18} className="mr-3" />
+                        Achievements
+                    </button>
+                    <button
                         onClick={() => setActiveTab('security')}
-                        className={`w-full flex items-center p-3 rounded-lg transition-all ${activeTab === 'security' ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                        className={`w - full flex items - center p - 3 rounded - lg transition - all ${activeTab === 'security' ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'} `}
                     >
                         <Shield size={18} className="mr-3" />
                         Security
                     </button>
                     <button
                         onClick={() => setActiveTab('privacy')}
-                        className={`w-full flex items-center p-3 rounded-lg transition-all ${activeTab === 'privacy' ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                        className={`w - full flex items - center p - 3 rounded - lg transition - all ${activeTab === 'privacy' ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'} `}
                     >
                         <Settings size={18} className="mr-3" />
                         Privacy
@@ -517,20 +536,23 @@ const Profile: React.FC = () => {
                         {activeTab === 'general' && <GeneralTab />}
                         {activeTab === 'education' && <EducationTab />}
                         {activeTab === 'preferences' && <PreferencesTab />}
+                        {activeTab === 'gamification' && <GamificationTab />}
                         {activeTab === 'security' && <SecurityTab />}
                         {activeTab === 'privacy' && <PrivacyTab />}
 
-                        {/* Save Button (Floating or Fixed at bottom) */}
-                        <div className="mt-8 pt-6 border-t border-slate-700 flex justify-end">
-                            <Button
-                                onClick={handleSave}
-                                isLoading={isLoading}
-                                className="px-8"
-                            >
-                                <Save size={18} className="mr-2" />
-                                Save Changes
-                            </Button>
-                        </div>
+                        {/* Save Button (Hide for non-form tabs if needed, but keeping for now as Gamification is read-only) */}
+                        {activeTab !== 'gamification' && (
+                            <div className="mt-8 pt-6 border-t border-slate-700 flex justify-end">
+                                <Button
+                                    onClick={handleSave}
+                                    isLoading={isLoading}
+                                    className="px-8"
+                                >
+                                    <Save size={18} className="mr-2" />
+                                    Save Changes
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

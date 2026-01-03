@@ -13,6 +13,8 @@ const Login = lazy(() => import('./pages/Login'));
 const Signup = lazy(() => import('./pages/Signup'));
 const StudyRoom = lazy(() => import('./pages/StudyRoom'));
 const StudyLobby = lazy(() => import('./pages/StudyLobby'));
+const SocialHub = lazy(() => import('./pages/SocialHub')); // New Lazy Import
+const GroupDetails = lazy(() => import('./pages/GroupDetails'));
 const Insights = lazy(() => import('./pages/Insights'));
 const Notes = lazy(() => import('./pages/Notes'));
 const CourseCommunity = lazy(() => import('./pages/CourseCommunity'));
@@ -60,6 +62,8 @@ const App: React.FC = () => {
                   <Route path="tutor" element={<AiTutor />} />
                   <Route path="study-lobby" element={<StudyLobby />} />
                   <Route path="study-room/:id" element={<StudyRoom />} />
+                  <Route path="social" element={<SocialHub />} />
+                  <Route path="group/:id" element={<GroupDetails />} /> {/* New Route */}
                   <Route path="insights" element={<Insights />} />
                   <Route path="notes" element={<Notes />} />
                   <Route path="community/:courseId" element={<CourseCommunity />} />

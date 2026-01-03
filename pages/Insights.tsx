@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { PageHeader, Spinner } from '../components/Common/ui';
 import { Clock, Gamepad2, Activity, Award } from 'lucide-react';
+import HeatmapWidget from '../components/Dashboard/HeatmapWidget'; // New import
+import TechniqueEffectivenessWidget from '../components/Dashboard/TechniqueEffectivenessWidget'; // New import
 
 // -------------------- TYPES --------------------
 interface GameActivity {
-  game: 'zip' | 'sudoku' | 'quiz';
+  game: 'zip' | 'sudoku' | 'quiz' | 'speedmath' | 'interview';
   score: number;
   duration: number; // seconds
   date: string;
@@ -25,9 +27,31 @@ const Insights: React.FC = () => {
   const [activity, setActivity] = useState<GameActivity[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Mock data for new widgets (since backend isn't ready for this granularity)
+  const [heatmapData, setHeatmapData] = useState<any>(null);
+  const [techniqueData, setTechniqueData] = useState<any>([]);
+
   useEffect(() => {
     const data = JSON.parse(localStorage.getItem('gameActivity') || '[]');
     setActivity(data);
+
+    // Generate Mock Heatmap Data
+    const mockHeatmap: any = {};
+    for (let d = 0; d < 7; d++) {
+      for (let t = 0; t < 3; t++) {
+        // Random intensity 0-4
+        mockHeatmap[`${d}-${t}`] = Math.floor(Math.random() * 5) > 2 ? Math.floor(Math.random() * 4) : 0;
+      }
+    }
+    setHeatmapData(mockHeatmap);
+
+    // Mock Technique Data
+    setTechniqueData([
+      { name: 'Pomodoro', rating: 4.2, sessions: 12 },
+      { name: 'Feynman Method', rating: 4.8, sessions: 5 },
+      { name: 'Spaced Repetition', rating: 3.9, sessions: 8 },
+    ]);
+
     setLoading(false);
   }, []);
 
@@ -61,22 +85,22 @@ const Insights: React.FC = () => {
 
   // -------------------- UI --------------------
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-10">
       <PageHeader
-        title="Insights"
-        subtitle="See how active you are while learning through games"
+        title="Insights & Analytics"
+        subtitle="Track your learning performance and habits."
       />
 
       {/* SUMMARY CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <StatCard
-          title="Games Played"
+          title="Total Activities"
           value={totalPlays}
           icon={Gamepad2}
         />
         <StatCard
           title="Total Time Spent"
-          value={`${totalTime} sec`}
+          value={`${Math.round(totalTime / 60)} min`} // Display in mins
           icon={Clock}
         />
         <StatCard
@@ -85,10 +109,22 @@ const Insights: React.FC = () => {
           icon={Activity}
         />
         <StatCard
-          title="Zip / Sudoku / Quiz"
-          value={`${zipCount} / ${sudokuCount} / ${quizCount}`}
+          title="Quiz / Sudoku"
+          value={`${quizCount} / ${sudokuCount}`}
           icon={Gamepad2}
         />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Heatmap Section */}
+        <div className="lg:col-span-2">
+          <HeatmapWidget data={heatmapData} isLoading={loading} />
+        </div>
+
+        {/* Technique Effectiveness */}
+        <div className="lg:col-span-1">
+          <TechniqueEffectivenessWidget data={techniqueData} isLoading={loading} />
+        </div>
       </div>
 
       {/* BADGES SECTION */}
@@ -130,7 +166,7 @@ const Insights: React.FC = () => {
       {/* ACTIVITY LIST */}
       <div className="bg-slate-800/50 p-6 rounded-xl ring-1 ring-slate-700">
         <h3 className="text-lg font-semibold text-slate-100 mb-4">
-          Recent Game Activity
+          Recent Activity Log
         </h3>
 
         {activity.length === 0 ? (
@@ -147,10 +183,10 @@ const Insights: React.FC = () => {
                   key={index}
                   className="flex justify-between text-slate-300"
                 >
-                  <span>
-                    {item.game.toUpperCase()} — Score {item.score}
+                  <span className="capitalize">
+                    {item.game} — Score {item.score}
                   </span>
-                  <span>{item.duration} sec</span>
+                  <span>{Math.round(item.duration)} sec</span>
                 </li>
               ))}
           </ul>
