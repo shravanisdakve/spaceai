@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth, User } from '../hooks/useAuth';
 import { Button, Input, PageHeader } from '../components/Common/ui';
-import { User as UserIcon, BookOpen, Settings, Shield, Edit2, Camera, Save, X, Share2, Trophy } from 'lucide-react';
+import { User as UserIcon, BookOpen, Settings, Shield, Edit2, Camera, Save, X, Share2, Trophy, Award } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import GamificationProfile from '../components/Gamification/GamificationProfile';
+import CertificatesTab from '../components/Profile/CertificatesTab';
 
 const Profile: React.FC = () => {
     const { currentUser, updateUserProfile } = useAuth();
     const { showToast } = useToast();
-    const [activeTab, setActiveTab] = useState<'general' | 'education' | 'preferences' | 'security' | 'privacy' | 'gamification'>('general');
+    const [activeTab, setActiveTab] = useState<'general' | 'education' | 'preferences' | 'security' | 'privacy' | 'gamification' | 'certificates'>('general');
     const [isLoading, setIsLoading] = useState(false);
 
     // Form state - initialized from currentUser
@@ -508,14 +509,21 @@ const Profile: React.FC = () => {
                     </button>
                     <button
                         onClick={() => setActiveTab('gamification')}
-                        className={`w - full flex items - center p - 3 rounded - lg transition - all ${activeTab === 'gamification' ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'} `}
+                        className={`w-full flex items-center p-3 rounded-lg transition-all ${activeTab === 'gamification' ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'} `}
                     >
                         <Trophy size={18} className="mr-3" />
                         Achievements
                     </button>
                     <button
+                        onClick={() => setActiveTab('certificates')}
+                        className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-colors ${activeTab === 'certificates' ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                    >
+                        <Award size={18} />
+                        <span className="font-medium">Certificates</span>
+                    </button>
+                    <button
                         onClick={() => setActiveTab('security')}
-                        className={`w - full flex items - center p - 3 rounded - lg transition - all ${activeTab === 'security' ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'} `}
+                        className={`w-full flex items-center p-3 rounded-lg transition-all ${activeTab === 'security' ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'} `}
                     >
                         <Shield size={18} className="mr-3" />
                         Security
@@ -539,9 +547,10 @@ const Profile: React.FC = () => {
                         {activeTab === 'gamification' && <GamificationTab />}
                         {activeTab === 'security' && <SecurityTab />}
                         {activeTab === 'privacy' && <PrivacyTab />}
+                        {activeTab === 'certificates' && <CertificatesTab />}
 
                         {/* Save Button (Hide for non-form tabs if needed, but keeping for now as Gamification is read-only) */}
-                        {activeTab !== 'gamification' && (
+                        {activeTab !== 'gamification' && activeTab !== 'certificates' && (
                             <div className="mt-8 pt-6 border-t border-slate-700 flex justify-end">
                                 <Button
                                     onClick={handleSave}
