@@ -13,8 +13,8 @@ const CourseSelector: React.FC<CourseSelectorProps> = ({ selectedCourse, onCours
 
     useEffect(() => {
         const fetchCourses = async () => {
-            const fetchedCourses = await getCourses();
-            setCourses(fetchedCourses);
+            const { courses } = await getCourses();
+            setCourses(courses);
         };
         fetchCourses();
     }, []);

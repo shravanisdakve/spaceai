@@ -115,7 +115,7 @@ const Notes: React.FC = () => {
   // --- Data Fetching Effects ---
   useEffect(() => {
     if (currentUser) {
-      getCourses().then(setCourses);
+      getCourses().then(({ courses }) => setCourses(courses));
     }
   }, [currentUser]);
 

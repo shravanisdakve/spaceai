@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { PageHeader, Spinner } from '../components/Common/ui';
-import { Clock, Gamepad2, Activity } from 'lucide-react';
+import { Clock, Gamepad2, Activity, Award } from 'lucide-react';
 
 // -------------------- TYPES --------------------
 interface GameActivity {
   game: 'zip' | 'sudoku' | 'quiz';
   score: number;
-  timeSpent: number; // seconds
+  duration: number; // seconds
   date: string;
 }
 
@@ -44,7 +44,7 @@ const Insights: React.FC = () => {
 
   const totalTime = activity.reduce(
     (sum, item) => {
-      const time = Number(item.timeSpent);
+      const time = Number(item.duration);
       return sum + (isNaN(time) ? 0 : time);
     },
     0
@@ -52,7 +52,8 @@ const Insights: React.FC = () => {
 
   const zipCount = activity.filter(a => a.game === 'zip').length;
   const sudokuCount = activity.filter(a => a.game === 'sudoku').length;
-  const quizCount = activity.filter(a => a.game === 'quiz').length;
+  // Check for 'quiz' or 'interview' as the type definition in gameTracker includes 'interview'
+  const quizCount = activity.filter(a => a.game === 'quiz' || a.game === 'interview').length;
 
   let activityLevel: 'Low' | 'Medium' | 'High' = 'Low';
   if (totalTime > 300) activityLevel = 'Medium';
@@ -90,6 +91,42 @@ const Insights: React.FC = () => {
         />
       </div>
 
+      {/* BADGES SECTION */}
+      <div className="bg-slate-800/50 p-6 rounded-xl ring-1 ring-slate-700">
+        <h3 className="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
+          <Award className="text-yellow-400" /> Achievements
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Novice Gamer */}
+          <div className={`p-4 rounded-lg border ${totalPlays > 0 ? 'bg-violet-900/20 border-violet-500/50' : 'bg-slate-800/50 border-slate-700 opacity-50'}`}>
+            <div className="text-2xl mb-2">🎮</div>
+            <h4 className="font-semibold text-sm text-slate-200">Novice Gamer</h4>
+            <p className="text-xs text-slate-400">Play your first game</p>
+          </div>
+
+          {/* Speed Demon */}
+          <div className={`p-4 rounded-lg border ${activity.some(a => a.game === 'speedmath') ? 'bg-violet-900/20 border-violet-500/50' : 'bg-slate-800/50 border-slate-700 opacity-50'}`}>
+            <div className="text-2xl mb-2">⚡</div>
+            <h4 className="font-semibold text-sm text-slate-200">Speed Demon</h4>
+            <p className="text-xs text-slate-400">Play Speed Math</p>
+          </div>
+
+          {/* Puzzle Master */}
+          <div className={`p-4 rounded-lg border ${activity.some(a => a.game === 'sudoku' && a.score > 0) ? 'bg-violet-900/20 border-violet-500/50' : 'bg-slate-800/50 border-slate-700 opacity-50'}`}>
+            <div className="text-2xl mb-2">🧩</div>
+            <h4 className="font-semibold text-sm text-slate-200">Puzzle Master</h4>
+            <p className="text-xs text-slate-400">Solve a Sudoku</p>
+          </div>
+
+          {/* Dedicated Learner */}
+          <div className={`p-4 rounded-lg border ${totalTime > 300 ? 'bg-violet-900/20 border-violet-500/50' : 'bg-slate-800/50 border-slate-700 opacity-50'}`}>
+            <div className="text-2xl mb-2">🎓</div>
+            <h4 className="font-semibold text-sm text-slate-200">Dedicated</h4>
+            <p className="text-xs text-slate-400">Study for 5+ mins</p>
+          </div>
+        </div>
+      </div>
+
       {/* ACTIVITY LIST */}
       <div className="bg-slate-800/50 p-6 rounded-xl ring-1 ring-slate-700">
         <h3 className="text-lg font-semibold text-slate-100 mb-4">
@@ -113,7 +150,7 @@ const Insights: React.FC = () => {
                   <span>
                     {item.game.toUpperCase()} — Score {item.score}
                   </span>
-                  <span>{item.timeSpent} sec</span>
+                  <span>{item.duration} sec</span>
                 </li>
               ))}
           </ul>

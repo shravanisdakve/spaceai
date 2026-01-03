@@ -1,5 +1,5 @@
 export type GameActivity = {
-  game: 'zip' | 'sudoku' | 'interview';
+  game: 'zip' | 'sudoku' | 'interview' | 'speedmath' | 'quiz';
   score?: number;
   duration: number; // seconds
   playedAt: string;

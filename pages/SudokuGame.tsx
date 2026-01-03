@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { saveGameActivity } from '@/services/gameTracker';
 
@@ -47,7 +47,23 @@ const SudokuGame: React.FC = () => {
       }
     }
     setMessage('✅ Sudoku Solved Correctly!');
+    // Calculate duration (approximate since we don't store startTime yet, assuming 5 mins for now or using Ref if possible)
+    // Adding Ref logic here:
+    // This function runs on every check, so we should guard saving.
   };
+
+  const startTimeRef = React.useRef(Date.now());
+  useEffect(() => {
+    if (message === '✅ Sudoku Solved Correctly!') {
+      const duration = Math.round((Date.now() - startTimeRef.current) / 1000);
+      saveGameActivity({
+        game: 'sudoku',
+        score: 100,
+        duration,
+        playedAt: new Date().toISOString()
+      });
+    }
+  }, [message]);
 
   return (
     <div className="flex flex-col items-center justify-center p-6">

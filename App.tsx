@@ -24,7 +24,7 @@ const SudokuGame = lazy(() => import('./pages/SudokuGame'));
 const ZipGame = lazy(() => import('./pages/ZipGame'));
 const SpeedMathGame = lazy(() => import('./pages/SpeedMathGame'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
-const Terms = lazy(() => import('./pages/Terms'));
+const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const Profile = lazy(() => import('./pages/Profile'));
 
@@ -36,6 +36,7 @@ const AuthLayout: React.FC = () => (
 );
 
 const MainLayout: React.FC = () => {
+  // ... (unchanged)
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -63,17 +64,7 @@ const MainLayout: React.FC = () => {
   );
 };
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser, loading } = useAuth();
-  if (loading) {
-    return (
-      <div className="w-full h-screen flex items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
-  return currentUser ? <>{children}</> : <Navigate to="/login" replace />;
-};
+// ... (ProtectedRoute unchanged)
 
 const App: React.FC = () => {
   const { currentUser, loading } = useAuth();
@@ -113,6 +104,8 @@ const App: React.FC = () => {
                   <Route path="zip" element={<ZipGame />} />
                   <Route path="speed-math" element={<SpeedMathGame />} />
                   <Route path="profile" element={<Profile />} />
+                  <Route path="terms" element={<TermsOfService />} />
+                  <Route path="privacy" element={<PrivacyPolicy />} />
 
                 </Route>
               ) : (
@@ -120,7 +113,7 @@ const App: React.FC = () => {
                   <Route path="/login" element={<Login />} />
                   <Route path="/signup" element={<Signup />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
-                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/terms" element={<TermsOfService />} />
                   <Route path="/privacy" element={<PrivacyPolicy />} />
                   <Route path="*" element={<Navigate to="/login" replace />} />
                 </Route>

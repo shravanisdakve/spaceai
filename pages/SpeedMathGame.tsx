@@ -99,7 +99,14 @@ export default function SpeedMathGame() {
     }
     nextQuestion();
   };
-const [startTime, setStartTime] = useState<number>(0);
+
+
+  // ---------------- HOOKS ----------------
+  const startTimeRef = React.useRef(Date.now());
+
+  useEffect(() => {
+    if (!level) startTimeRef.current = Date.now();
+  }, [level]);
 
   // ---------------- LEVEL SELECTION ----------------
   if (!level) {
@@ -141,6 +148,14 @@ const [startTime, setStartTime] = useState<number>(0);
 
   // ---------------- GAME OVER ----------------
   if (gameOver) {
+    const duration = Math.round((Date.now() - startTimeRef.current) / 1000);
+    saveGameActivity({
+      game: 'speedmath',
+      score,
+      duration,
+      playedAt: new Date().toISOString(),
+    });
+
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
         <h2 className="text-3xl font-bold mb-2">🏁 Game Over</h2>

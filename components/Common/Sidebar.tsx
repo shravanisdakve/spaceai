@@ -150,7 +150,14 @@ const Sidebar: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, o
               Logout
             </button>
           </div>
-          <p className="text-center text-xs text-slate-500 mt-4">&copy; 2024 NexusAI. All rights reserved.</p>
+          <div className="mt-4 text-center">
+            <div className="text-xs text-slate-500 space-x-2 mb-1">
+              <button onClick={() => navigate('/terms')} className="hover:text-slate-300">Terms</button>
+              <span>•</span>
+              <button onClick={() => navigate('/privacy')} className="hover:text-slate-300">Privacy</button>
+            </div>
+            <p className="text-xs text-slate-600">&copy; 2024 NexusAI.</p>
+          </div>
         </div>
       </aside>
 

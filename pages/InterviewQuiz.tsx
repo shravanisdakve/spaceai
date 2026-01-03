@@ -58,6 +58,17 @@ const InterviewQuiz: React.FC = () => {
   const [finished, setFinished] = useState(false);
   const [wrongAnswers, setWrongAnswers] = useState<WrongAnswer[]>([]);
 
+  React.useEffect(() => {
+    if (finished) {
+      saveGameActivity({
+        game: 'interview',
+        score,
+        duration: 60, // approximate or implement real timer later
+        playedAt: new Date().toISOString()
+      });
+    }
+  }, [finished, score]);
+
   const handleNext = () => {
     const q = questions[current];
 
@@ -103,11 +114,10 @@ const InterviewQuiz: React.FC = () => {
               <button
                 key={idx}
                 onClick={() => setSelected(idx)}
-                className={`w-full p-2 rounded border text-left ${
-                  selected === idx
-                    ? 'bg-purple-600 border-purple-400'
-                    : 'bg-slate-800 border-slate-700'
-                }`}
+                className={`w-full p-2 rounded border text-left ${selected === idx
+                  ? 'bg-purple-600 border-purple-400'
+                  : 'bg-slate-800 border-slate-700'
+                  }`}
               >
                 {opt}
               </button>

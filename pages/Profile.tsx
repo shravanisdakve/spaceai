@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth, User } from '../hooks/useAuth';
 import { Button, Input, PageHeader } from '../components/Common/ui';
-import { User as UserIcon, BookOpen, Settings, Shield, Edit2, Camera, Save, X } from 'lucide-react';
+import { User as UserIcon, BookOpen, Settings, Shield, Edit2, Camera, Save, X, Share2 } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 
 const Profile: React.FC = () => {
@@ -316,6 +316,28 @@ const Profile: React.FC = () => {
                 title="My Profile"
                 subtitle="Manage your personal information and preferences."
             />
+            {/* Social Invite Section */}
+            <div className="bg-gradient-to-r from-violet-600/20 to-indigo-600/20 border border-violet-500/30 rounded-xl p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-violet-600/20 rounded-lg text-violet-400">
+                        <Share2 size={24} />
+                    </div>
+                    <div>
+                        <h3 className="font-medium text-white">Invite Friends</h3>
+                        <p className="text-sm text-slate-400">Share NexusAI with your study group!</p>
+                    </div>
+                </div>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                        navigator.clipboard.writeText("Check out NexusAI: https://nexusai.edu");
+                        showToast("Invite link copied to clipboard!", "success");
+                    }}
+                >
+                    Copy Link
+                </Button>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                 {/* Sidebar Navigation */}
