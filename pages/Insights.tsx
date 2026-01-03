@@ -43,7 +43,10 @@ const Insights: React.FC = () => {
   const totalPlays = activity.length;
 
   const totalTime = activity.reduce(
-    (sum, item) => sum + item.timeSpent,
+    (sum, item) => {
+      const time = Number(item.timeSpent);
+      return sum + (isNaN(time) ? 0 : time);
+    },
     0
   );
 

@@ -1,6 +1,8 @@
 import { type Note, type Flashcard } from '../types';
 import { extractTextFromFile, summarizeAudioFromBase64 } from './geminiService';
 
+const API_URL = 'http://localhost:5000/api';
+
 // Helper function to convert File to Base64
 const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -18,157 +20,183 @@ const fileToBase64 = (file: File): Promise<string> => {
     });
 };
 
-// Mock database with localStorage persistence
-const getMockNotes = (courseId: string): Note[] => {
-    try {
-        const notes = localStorage.getItem(`mockNotes_${courseId}`);
-        return notes ? JSON.parse(notes) : [];
-    } catch (error) {
-        console.error("Error reading notes from localStorage", error);
-        return [];
-    }
-};
-
-const setMockNotes = (courseId: string, notes: Note[]) => {
-    try {
-        localStorage.setItem(`mockNotes_${courseId}`, JSON.stringify(notes));
-    } catch (error) {
-        console.error("Error saving notes to localStorage", error);
-    }
-};
-
-const getMockFlashcards = (courseId: string): Flashcard[] => {
-    try {
-        const flashcards = localStorage.getItem(`mockFlashcards_${courseId}`);
-        return flashcards ? JSON.parse(flashcards) : [];
-    } catch (error) {
-        console.error("Error reading flashcards from localStorage", error);
-        return [];
-    }
-};
-
-const setMockFlashcards = (courseId: string, flashcards: Flashcard[]) => {
-    try {
-        localStorage.setItem(`mockFlashcards_${courseId}`, JSON.stringify(flashcards));
-    } catch (error) {
-        console.error("Error saving flashcards to localStorage", error);
-    }
-};
+// --- NOTES (MongoDB API) ---
 
 export const getNotes = async (courseId: string): Promise<Note[]> => {
-    console.log("Fetching notes from mock service...");
-    return Promise.resolve(getMockNotes(courseId));
+    try {
+        const response = await fetch(`${API_URL}/notes/${courseId}`);
+        if (!response.ok) throw new Error('Failed to fetch notes');
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching notes:", error);
+        return [];
+    }
 };
 
 export const addTextNote = async (courseId: string, title: string, content: string): Promise<Note | null> => {
-    console.log("Adding text note to mock service:", title);
-    const mockNotes = getMockNotes(courseId);
-    const newNote: Note = {
-        id: `mock_note_${Date.now()}`,
-        courseId,
-        title,
-        content,
-        createdAt: Date.now(),
-    };
-    const updatedNotes = [...mockNotes, newNote];
-    setMockNotes(courseId, updatedNotes);
-    console.log("Added text note to mock service:", newNote);
-    return Promise.resolve(newNote);
+    const userJson = localStorage.getItem('user');
+    const user = userJson ? JSON.parse(userJson) : null;
+    const userId = user ? (user.uid || user.id) : 'anonymous';
+
+    try {
+        const response = await fetch(`${API_URL}/notes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId,
+                courseId,
+                title,
+                content,
+                type: 'text'
+            })
+        });
+        if (!response.ok) throw new Error('Failed to add note');
+        return await response.json();
+    } catch (error) {
+        console.error("Error adding note:", error);
+        return null;
+    }
 };
 
 export const uploadNoteFile = async (courseId: string, title: string, file: File): Promise<Note | null> => {
-    console.log("Uploading note file to mock service:", title);
-    const mockNotes = getMockNotes(courseId);
-    let extractedContent = "[Text extraction pending or failed]"; // Default content
+    const userJson = localStorage.getItem('user');
+    const user = userJson ? JSON.parse(userJson) : null;
+    const userId = user ? (user.uid || user.id) : 'anonymous';
+
+    let extractedContent = "[Text extraction pending or failed]";
 
     try {
-      const base64Data = await fileToBase64(file);
-      
-      // Check if it's an audio file
-      if (file.type.startsWith('audio/')) {
-        console.log(`Summarizing audio file ${file.name}...`);
-        extractedContent = await summarizeAudioFromBase64(base64Data, file.type);
-        console.log(`Extracted ${extractedContent.length} characters from audio: ${file.name}`);
-      
-      // Otherwise, treat as document (PDF, PPTX, TXT)
-      } else {
-        console.log(`Extracting text from document ${file.name}...`);
-        extractedContent = await extractTextFromFile(base64Data, file.type);
-        console.log(`Extracted ${extractedContent.length} characters from document: ${file.name}`);
-      }
+        const base64Data = await fileToBase64(file);
 
+        if (file.type.startsWith('audio/')) {
+            console.log(`Summarizing audio file ${file.name}...`);
+            extractedContent = await summarizeAudioFromBase64(base64Data, file.type);
+        } else {
+            console.log(`Extracting text from document ${file.name}...`);
+            extractedContent = await extractTextFromFile(base64Data, file.type);
+        }
     } catch (error) {
-      console.error(`Failed to extract text from ${file.name}:`, error);
-      // Keep the default content message if extraction fails
+        console.error(`Failed to extract text from ${file.name}:`, error);
     }
 
-    const newNote: Note = {
-        id: `mock_note_${Date.now()}_${Math.random()}`,
-        courseId,
-        title,
-        content: extractedContent, // Store extracted text here
-        fileName: file.name,
-        fileType: file.type,
-        fileUrl: URL.createObjectURL(file), // Still store URL for preview/download
-        createdAt: Date.now(),
-    };
-    const updatedNotes = [...mockNotes, newNote];
-    setMockNotes(courseId, updatedNotes);
-    console.log("Uploaded note file to mock service (with extracted text):", newNote);
-    return Promise.resolve(newNote);
+    try {
+        const response = await fetch(`${API_URL}/notes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId,
+                courseId,
+                title,
+                content: extractedContent,
+                type: 'file',
+                fileName: file.name,
+                fileType: file.type,
+                fileUrl: URL.createObjectURL(file)
+            })
+        });
+
+        if (!response.ok) throw new Error('Failed to upload note');
+        return await response.json();
+    } catch (error) {
+        console.error("Error uploading note:", error);
+        return null;
+    }
 };
 
 export const updateNoteContent = async (courseId: string, noteId: string, newContent: string): Promise<void> => {
-    console.log("Updating note content in mock service:", noteId);
-    const mockNotes = getMockNotes(courseId);
-    const updatedNotes = mockNotes.map(n =>
-        n.id === noteId ? { ...n, content: newContent } : n
-    );
-    setMockNotes(courseId, updatedNotes);
-    console.log("Updated note content in mock service:", noteId);
-    return Promise.resolve();
+    try {
+        const response = await fetch(`${API_URL}/notes/${noteId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: newContent })
+        });
+        if (!response.ok) throw new Error('Failed to update note');
+    } catch (error) {
+        console.error("Error updating note:", error);
+        throw error;
+    }
 };
 
 export const deleteNote = async (courseId: string, note: Note): Promise<void> => {
-    console.log("Deleting note from mock service:", note.id);
-    const mockNotes = getMockNotes(courseId);
-    const updatedNotes = mockNotes.filter(n => n.id !== note.id);
-    setMockNotes(courseId, updatedNotes);
-    console.log("Deleted note from mock service:", note.id);
-    return Promise.resolve();
+    try {
+        const response = await fetch(`${API_URL}/notes/${note.id}`, {
+            method: 'DELETE',
+        });
+        if (!response.ok) throw new Error('Failed to delete note');
+    } catch (error) {
+        console.error("Error deleting note:", error);
+        throw error;
+    }
 };
 
-// --- Flashcard Management ---
+// --- FLASHCARDS (MongoDB API + SRS) ---
 
 export const getFlashcards = async (courseId: string): Promise<Flashcard[]> => {
-    console.log("Fetching flashcards from mock service...");
-    return Promise.resolve(getMockFlashcards(courseId));
+    try {
+        const response = await fetch(`${API_URL}/flashcards/${courseId}`);
+        if (!response.ok) throw new Error('Failed to fetch flashcards');
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching flashcards:", error);
+        return [];
+    }
 };
 
 export const addFlashcards = async (courseId: string, flashcards: Flashcard[]): Promise<void> => {
-    console.log("Adding flashcards to mock service...");
-    const mockFlashcards = getMockFlashcards(courseId);
-    // const newFlashcards = flashcards.map(f => ({ ...f, id: `mock_flashcard_${Date.now()}` })); // <-- This was the bug
-    const updatedFlashcards = [...mockFlashcards, ...flashcards]; // <-- Use the flashcards (with their good IDs) directly
-    setMockFlashcards(courseId, updatedFlashcards);
-    console.log("Added flashcards to mock service:", flashcards);
-    return Promise.resolve();
+    const userJson = localStorage.getItem('user');
+    const user = userJson ? JSON.parse(userJson) : null;
+    const userId = user ? (user.uid || user.id) : 'anonymous';
+
+    try {
+        // Iterate and add (bulk create would be better but simple loop for now)
+        for (const card of flashcards) {
+            await fetch(`${API_URL}/flashcards`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId,
+                    courseId,
+                    front: card.front,
+                    back: card.back
+                })
+            });
+        }
+    } catch (error) {
+        console.error("Error adding flashcards:", error);
+        throw error;
+    }
 };
 
 export const updateFlashcard = async (courseId: string, flashcardId: string, updates: Partial<Flashcard>): Promise<void> => {
-    console.log("Updating flashcard in mock service:", flashcardId);
-    const mockFlashcards = getMockFlashcards(courseId);
-    const updatedFlashcards = mockFlashcards.map(f => f.id === flashcardId ? { ...f, ...updates } : f);
-    setMockFlashcards(courseId, updatedFlashcards);
-    console.log("Updated flashcard in mock service:", flashcardId);
+    // Note: Standard update not fully implemented in backend yet, just SRS review.
+    // Assuming we might add PUT /api/flashcards/:id later for content edits
+    console.warn("Update flashcard content not yet implemented on backend");
     return Promise.resolve();
 };
 
 export const deleteFlashcard = async (courseId: string, flashcardId: string): Promise<void> => {
-    console.log("Deleting flashcard from mock service:", flashcardId);
-    const mockFlashcards = getMockFlashcards(courseId);
-    const updatedFlashcards = mockFlashcards.filter(f => f.id !== flashcardId);
-    setMockFlashcards(courseId, updatedFlashcards);
-    console.log("Deleted flashcard from mock service:", flashcardId);
-    return Promise.resolve();
+    try {
+        const response = await fetch(`${API_URL}/flashcards/${flashcardId}`, {
+            method: 'DELETE',
+        });
+        if (!response.ok) throw new Error('Failed to delete flashcard');
+    } catch (error) {
+        console.error("Error deleting flashcard:", error);
+        throw error;
+    }
+};
+
+// NEW: Record a review (SRS)
+export const reviewFlashcard = async (flashcardId: string, quality: number): Promise<void> => {
+    try {
+        const response = await fetch(`${API_URL}/flashcards/review/${flashcardId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quality })
+        });
+        if (!response.ok) throw new Error('Failed to submit review');
+    } catch (error) {
+        console.error("Error submitting flashcard review:", error);
+        throw error;
+    }
 };

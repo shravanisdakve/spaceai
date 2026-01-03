@@ -32,9 +32,9 @@ const CourseSelector: React.FC<CourseSelectorProps> = ({ selectedCourse, onCours
                 className="bg-slate-800/50 border border-slate-700 rounded-md py-2 px-3 text-sm text-slate-200 focus:ring-violet-500 focus:border-violet-500"
             >
                 <option value="">No specific course</option>
-                {courses.map(course => (
+                {Array.isArray(courses) && courses.map(course => (
                     <option key={course.id} value={course.id}>
-                       {course.name}
+                        {course.name}
                     </option>
                 ))}
             </select>

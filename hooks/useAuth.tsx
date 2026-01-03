@@ -8,11 +8,31 @@ import React, {
 
 /* ===================== TYPES ===================== */
 
-interface User {
+export interface User {
   uid: string;
   displayName: string | null;
   email: string | null;
+  // Personal
+  photoURL?: string;
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+  bio?: string;
+  location?: string;
+  dateOfBirth?: string;
+  // Education
   university?: string;
+  degree?: string;
+  yearOfStudy?: string;
+  fieldOfStudy?: string;
+  gpa?: string;
+  academicGoals?: string;
+  // Preferences
+  studyLanguage?: string;
+  learningStyle?: string;
+  theme?: 'light' | 'dark';
+  // Security
+  twoFactorEnabled?: boolean;
 }
 
 interface AuthContextType {

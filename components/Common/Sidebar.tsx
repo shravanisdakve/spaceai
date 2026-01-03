@@ -11,7 +11,7 @@ const navigation = [
   { name: 'Notes', href: '/notes', icon: FileText },
   { name: 'AI Tutor', href: '/tutor', icon: MessageSquare },
   { name: 'Study Room', href: '/study-lobby', icon: Users },
-//   { name: 'Community', href: '/insights?tab=community', icon: Users }, // Assuming Community page removed/merged
+  //   { name: 'Community', href: '/insights?tab=community', icon: Users }, // Assuming Community page removed/merged
 ];
 
 const Sidebar: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, onClose }) => {
@@ -25,8 +25,10 @@ const Sidebar: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, o
       const cacheKey = `avatar-url-${currentUser.uid}`;
       const cachedUrl = sessionStorage.getItem(cacheKey);
 
-      if (cachedUrl) {
+      if (cachedUrl && !currentUser.photoURL) { // Use cache only if no custom photo
         setAvatarUrl(cachedUrl);
+      } else if (currentUser.photoURL) {
+        setAvatarUrl(currentUser.photoURL);
       } else {
         const newUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
           currentUser.displayName || 'User'
@@ -49,16 +51,20 @@ const Sidebar: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, o
     }
   };
 
-  const handleProfileSave = async (newName: string) => {
+  const handleProfileSave = async (updates: any) => { // Use 'any' or Partial<User> if imported
     if (!updateUserProfile) {
       throw new Error("Profile update function not loaded.");
     }
     try {
-      await updateUserProfile({ displayName: newName });
-      // Invalidate avatar cache on name change
+      await updateUserProfile(updates);
+      // Invalidate avatar cache if name or photo changed
       const cacheKey = `avatar-url-${currentUser?.uid}`;
       sessionStorage.removeItem(cacheKey);
-      // The useEffect will automatically regenerate the avatar URL
+      // The useEffect will automatically regenerate the avatar URL if needed
+      // If photoURL is in updates, we might need to force update local state for avatar
+      if (updates.photoURL) {
+        setAvatarUrl(updates.photoURL);
+      }
     } catch (error) {
       throw error;
     }
@@ -70,17 +76,15 @@ const Sidebar: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, o
     <>
       {/* Overlay for mobile */}
       <div
-        className={`fixed inset-0 bg-black/60 z-30 md:hidden transition-opacity ${
-          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
+        className={`fixed inset-0 bg-black/60 z-30 md:hidden transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
         onClick={onClose}
         aria-hidden="true"
       />
 
       <aside
-        className={`fixed top-0 left-0 h-full w-64 flex-shrink-0 bg-slate-800/80 backdrop-blur-lg p-6 flex flex-col ring-1 ring-slate-700 z-40 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed top-0 left-0 h-full w-64 flex-shrink-0 bg-slate-800/80 backdrop-blur-lg p-6 flex flex-col ring-1 ring-slate-700 z-40 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <div className="flex items-center justify-between mb-10">
           <div className="flex items-center">
@@ -104,10 +108,9 @@ const Sidebar: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, o
               end={item.href === '/'}
               onClick={onClose} // Close sidebar on navigation
               className={({ isActive }) =>
-                `flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
-                  isActive
-                    ? 'bg-violet-600 text-white shadow-lg'
-                    : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                `flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors duration-200 ${isActive
+                  ? 'bg-violet-600 text-white shadow-lg'
+                  : 'text-slate-300 hover:bg-slate-700 hover:text-white'
                 }`
               }
               aria-current={({ isActive }) => (isActive ? 'page' : undefined)}

@@ -15,6 +15,9 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/courses', require('./routes/courses'));
+app.use('/api/notes', require('./routes/notes'));
+app.use('/api/flashcards', require('./routes/flashcards'));
 
 // Database Connection
 const connectDB = require('./config/db');
