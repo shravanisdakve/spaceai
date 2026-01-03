@@ -1,182 +1,174 @@
-import React, { useContext, useState, useEffect, createContext, ReactNode } from 'react';
-import { auth, db } from '../firebase';
-import { 
-    onAuthStateChanged, 
-    createUserWithEmailAndPassword, 
-    signInWithEmailAndPassword, 
-    signOut,
-    sendPasswordResetEmail,
-    updateProfile,
-    type User as FirebaseUser
-} from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import React, {
+  useContext,
+  useState,
+  useEffect,
+  createContext,
+  ReactNode,
+} from "react";
 
-// Custom User interface to match your app's needs
+/* ===================== TYPES ===================== */
+
 interface User {
   uid: string;
   displayName: string | null;
   email: string | null;
-  // university?: string; // This will be stored in Firestore, not in the auth object
+  university?: string;
 }
 
 interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
-  signup: (displayName: string, email: string, password: string, university: string) => Promise<void>;
+  signup: (
+    displayName: string,
+    email: string,
+    university: string,
+    password: string
+  ) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  updateUserProfile: (updates: { displayName?: string }) => Promise<void>;
+  updateUserProfile: (updates: Partial<User>) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>; // Added to satisfy interface used in App.tsx
 }
+
+/* ===================== CONTEXT ===================== */
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+/* ===================== PROVIDER ===================== */
+
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // onAuthStateChanged returns an unsubscribe function
-    const unsubscribe = onAuthStateChanged(auth, user => {
-      if (user) {
-        // User is signed in
-        setCurrentUser({
-          uid: user.uid,
-          displayName: user.displayName,
-          email: user.email,
-        });
-      } else {
-        // User is signed out
-        setCurrentUser(null);
-      }
-      setLoading(false);
-    });
+  const API_URL = "http://localhost:5000/api/auth";
 
-    // Cleanup subscription on unmount
-    return unsubscribe;
+  /* ===== Auto login after page refresh ===== */
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const user = localStorage.getItem("user");
+
+    if (token && user) {
+      setCurrentUser(JSON.parse(user));
+    }
+    setLoading(false);
   }, []);
 
-  const signup = async (displayName: string, email: string, password: string, university: string) => {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      
-      // After creating the user, update their profile with the display name
-      await updateProfile(user, { displayName });
+  /* ===================== SIGNUP ===================== */
+  const signup = async (
+    displayName: string,
+    email: string,
+    university: string,
+    password: string
+  ) => {
+    setLoading(true);
 
-      // Now, save the university and other details to Firestore
-      const userDocRef = doc(db, "users", user.uid);
-      await setDoc(userDocRef, {
-        uid: user.uid,
-        displayName,
-        email,
-        university,
-        createdAt: new Date(),
+    try {
+      const res = await fetch(`${API_URL}/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName, // Note: Backend currently doesn't save this in the snippet provided, but sending it anyway
+          email,
+          university, // Backend doesn't save this either
+          password,
+        }),
       });
 
-      // The onAuthStateChanged listener will automatically update the currentUser state
-    } catch (error: any) {
-      let errorMessage = "An unknown error occurred during sign up.";
-      switch (error.code) {
-        case 'auth/email-already-in-use':
-          errorMessage = "This email address is already in use by another account.";
-          break;
-        case 'auth/invalid-email':
-          errorMessage = "The email address is not valid.";
-          break;
-        case 'auth/weak-password':
-          errorMessage = "The password is too weak. It must be at least 6 characters long.";
-          break;
-        default:
-          errorMessage = "Failed to create an account. Please try again later.";
-          break;
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Signup failed");
       }
-      throw new Error(errorMessage);
+    } catch (error: any) {
+      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
+  /* ===================== LOGIN ===================== */
   const login = async (email: string, password: string) => {
+    setLoading(true);
+
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      // The onAuthStateChanged listener will handle the user state update
-    } catch (error: any) {
-      let errorMessage = "An unknown error occurred during login.";
-      switch (error.code) {
-        case 'auth/user-not-found':
-          errorMessage = "No account found with this email address.";
-          break;
-        case 'auth/wrong-password':
-          errorMessage = "Incorrect password. Please try again.";
-          break;
-        case 'auth/invalid-email':
-          errorMessage = "The email address is not valid.";
-          break;
-        case 'auth/user-disabled':
-            errorMessage = "This account has been disabled.";
-            break;
-        default:
-          errorMessage = "Failed to sign in. Please try again later.";
-          break;
+      const res = await fetch(`${API_URL}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Login failed");
       }
-      throw new Error(errorMessage);
+
+      const data = await res.json();
+
+      const user: User = {
+        uid: data.user.id || data.user._id || "user-id",
+        displayName: data.user.displayName || null, // Backend might not return this
+        email: data.user.email,
+        university: data.user.university,
+      };
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      setCurrentUser(user);
+    } catch (error: any) {
+      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
+  /* ===================== LOGOUT ===================== */
   const logout = async () => {
-    await signOut(auth);
-    // The onAuthStateChanged listener will handle the user state update
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setCurrentUser(null);
   };
 
+  /* ===================== UPDATE PROFILE ===================== */
+  const updateUserProfile = async (updates: Partial<User>) => {
+    if (!currentUser) return;
+
+    const updatedUser = { ...currentUser, ...updates };
+    setCurrentUser(updatedUser);
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+  };
+
+  /* ===================== RESET PASSWORD (STUB) ===================== */
   const resetPassword = async (email: string) => {
-    try {
-      await sendPasswordResetEmail(auth, email);
-    } catch (error: any) {
-      let errorMessage = "An unknown error occurred.";
-      switch (error.code) {
-        case 'auth/user-not-found':
-          errorMessage = "No account found with this email address.";
-          break;
-        case 'auth/invalid-email':
-            errorMessage = "The email address is not valid.";
-            break;
-        default:
-          errorMessage = "Failed to send password reset email. Please try again later.";
-          break;
-      }
-      throw new Error(errorMessage);
-    }
+    // Stub implementation since custom backend doesn't implement this yet
+    console.log("Reset password requested for", email);
+    alert("Password reset functionality is not yet implemented in the backend.");
   };
 
-  const updateUserProfile = async (updates: { displayName?: string }) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("No user is currently signed in.");
-    
-    await updateProfile(user, updates);
-    // Manually update the context's user state to reflect changes immediately
-    setCurrentUser(prevUser => prevUser ? { ...prevUser, ...updates } : null);
-  };
 
-  const value = {
+  /* ===================== VALUE ===================== */
+  const value: AuthContextType = {
     currentUser,
     loading,
     signup,
     login,
     logout,
-    resetPassword,
     updateUserProfile,
+    resetPassword
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
