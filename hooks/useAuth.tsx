@@ -9,18 +9,28 @@ import React, {
 /* ===================== TYPES ===================== */
 
 export interface User {
-  _id?: string; // MongoDB ID (sometimes returned as _id)
-  uid?: string; // For backward compatibility or mapped from _id
-  displayName: string | null;
-  email: string | null;
-  // Personal
+  uid?: string; // Firebase / Local ID
+  _id?: string; // MongoDB ID
+  email: string;
+  displayName?: string;
+  photoURL?: string; // Legacy
+  avatar?: string; // New field
+
+  // New Profile Fields
   firstName?: string;
   lastName?: string;
-  avatar?: string;
-  phoneNumber?: string;
   bio?: string;
   location?: string;
+  phoneNumber?: string;
   dateOfBirth?: string; // ISO string 
+  website?: string;
+  pronouns?: string;
+  socials?: {
+    github?: string;
+    linkedin?: string;
+    twitter?: string;
+  };
+
   // Education
   university?: string;
   degree?: string;
@@ -28,6 +38,10 @@ export interface User {
   fieldOfStudy?: string;
   gpa?: string;
   academicGoals?: string;
+  expectedGraduation?: string;
+  focusAreas?: string[]; // Array of strings? stored as strings in Update
+  languages?: string[];
+
   // Preferences
   preferences?: {
     studyLanguage?: string;
@@ -35,16 +49,21 @@ export interface User {
     learningPace?: string;
     learningStyle?: string;
     interests?: string[];
+    studyDuration?: number;
+    notificationFrequency?: string;
   };
-  // Settings
+
   settings?: {
     notifications?: {
-      email: boolean;
-      push: boolean;
-      inApp: boolean;
+      email?: boolean;
+      push?: boolean;
+      inApp?: boolean;
+    };
+    privacy?: {
+      profileVisibility?: 'public' | 'private' | 'friends';
+      showGPA?: boolean;
     };
     twoFactorEnabled?: boolean;
-    privacy?: string;
   };
 }
 

@@ -7,7 +7,7 @@ import { useToast } from '../hooks/useToast';
 const Profile: React.FC = () => {
     const { currentUser, updateUserProfile } = useAuth();
     const { showToast } = useToast();
-    const [activeTab, setActiveTab] = useState<'general' | 'education' | 'preferences' | 'security'>('general');
+    const [activeTab, setActiveTab] = useState<'general' | 'education' | 'preferences' | 'security' | 'privacy'>('general');
     const [isLoading, setIsLoading] = useState(false);
 
     // Form state - initialized from currentUser
@@ -131,11 +131,54 @@ const Profile: React.FC = () => {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-2">Phone Number</label>
+                    <label className="block text-sm font-medium text-slate-400 mb-2">Phone Number (Optional)</label>
                     <Input
                         value={formData.phoneNumber || ''}
                         onChange={e => handleInputChange('phoneNumber', e.target.value)}
                         placeholder="+1 (555) 000-0000"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-2">Date of Birth</label>
+                    <Input
+                        type="date"
+                        value={formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString().split('T')[0] : ''}
+                        onChange={e => handleInputChange('dateOfBirth', e.target.value)}
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-2">Pronouns</label>
+                    <Input
+                        value={formData.pronouns || ''}
+                        onChange={e => handleInputChange('pronouns', e.target.value)}
+                        placeholder="e.g. they/them"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-2">Website / Portfolio</label>
+                    <Input
+                        value={formData.website || ''}
+                        onChange={e => handleInputChange('website', e.target.value)}
+                        placeholder="https://..."
+                    />
+                </div>
+                {/* Socials */}
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-slate-700 pt-4 mt-2">
+                    <p className="md:col-span-3 text-sm font-medium text-slate-300">Social Profiles</p>
+                    <Input
+                        value={formData.socials?.linkedin || ''}
+                        onChange={e => handleInputChange('socials.linkedin', e.target.value)}
+                        placeholder="LinkedIn URL"
+                    />
+                    <Input
+                        value={formData.socials?.github || ''}
+                        onChange={e => handleInputChange('socials.github', e.target.value)}
+                        placeholder="GitHub URL"
+                    />
+                    <Input
+                        value={formData.socials?.twitter || ''}
+                        onChange={e => handleInputChange('socials.twitter', e.target.value)}
+                        placeholder="Twitter URL"
                     />
                 </div>
             </div>
@@ -193,15 +236,28 @@ const Profile: React.FC = () => {
                         placeholder="e.g. 3.8"
                     />
                 </div>
-                <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-slate-400 mb-2">Academic Goals</label>
-                    <textarea
-                        className="w-full bg-slate-800 border-none rounded-lg p-3 text-slate-200 focus:ring-2 focus:ring-violet-500 resize-none h-24"
-                        value={formData.academicGoals || ''}
-                        onChange={e => handleInputChange('academicGoals', e.target.value)}
-                        placeholder="What do you hope to achieve?"
-                    />
-                </div>
+                <textarea
+                    className="w-full bg-slate-800 border-none rounded-lg p-3 text-slate-200 focus:ring-2 focus:ring-violet-500 resize-none h-24"
+                    value={formData.academicGoals || ''}
+                    onChange={e => handleInputChange('academicGoals', e.target.value)}
+                    placeholder="What do you hope to achieve?"
+                />
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Expected Graduation</label>
+                <Input
+                    type="date"
+                    value={formData.expectedGraduation ? new Date(formData.expectedGraduation).toISOString().split('T')[0] : ''}
+                    onChange={e => handleInputChange('expectedGraduation', e.target.value)}
+                />
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Languages (Comma separated)</label>
+                <Input
+                    value={formData.languages?.join(', ') || ''}
+                    onChange={e => handleInputChange('languages', e.target.value.split(',').map(s => s.trim()))}
+                    placeholder="English, Spanish, Python..."
+                />
             </div>
         </div>
     );
@@ -266,6 +322,32 @@ const Profile: React.FC = () => {
                         <option value="Kinesthetic">Kinesthetic (Hands-on)</option>
                     </select>
                 </div>
+                <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-2">Study Session Duration</label>
+                    <select
+                        className="w-full bg-slate-800 border-none rounded-lg p-3 text-slate-200 focus:ring-2 focus:ring-violet-500"
+                        value={formData.preferences?.studyDuration || 60}
+                        onChange={e => handleInputChange('preferences.studyDuration', parseInt(e.target.value))}
+                    >
+                        <option value={30}>30 Minutes</option>
+                        <option value={45}>45 Minutes</option>
+                        <option value={60}>60 Minutes</option>
+                        <option value={90}>90 Minutes</option>
+                        <option value={120}>2 Hours</option>
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-2">Notification Frequency</label>
+                    <select
+                        className="w-full bg-slate-800 border-none rounded-lg p-3 text-slate-200 focus:ring-2 focus:ring-violet-500"
+                        value={formData.preferences?.notificationFrequency || 'Daily'}
+                        onChange={e => handleInputChange('preferences.notificationFrequency', e.target.value)}
+                    >
+                        <option value="Daily">Daily Summary</option>
+                        <option value="Weekly">Weekly Digest</option>
+                        <option value="As-needed">As Needed</option>
+                    </select>
+                </div>
             </div>
             <div>
                 <label className="block text-sm font-medium text-slate-400 mb-2">Interests (Comma separated)</label>
@@ -275,7 +357,7 @@ const Profile: React.FC = () => {
                     placeholder="e.g. Physics, Coding, History"
                 />
             </div>
-        </div>
+        </div >
     );
 
     const SecurityTab = () => (
@@ -306,6 +388,55 @@ const Profile: React.FC = () => {
                 <h4 className="text-lg font-medium text-red-400 mb-4">Danger Zone</h4>
                 <p className="text-sm text-slate-400 mb-4">Once you delete your account, there is no going back. Please be certain.</p>
                 <Button variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-900/20 w-full sm:w-auto">Default Account</Button>
+            </div>
+        </div>
+    );
+
+    const PrivacyTab = () => (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-slate-800/50 p-6 rounded-xl ring-1 ring-slate-700">
+                <h4 className="text-lg font-medium text-white mb-4">Privacy Settings</h4>
+                <div className="grid grid-cols-1 gap-6">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-400 mb-2">Profile Visibility</label>
+                        <select
+                            className="w-full bg-slate-800 border-none rounded-lg p-3 text-slate-200 focus:ring-2 focus:ring-violet-500"
+                            value={formData.settings?.privacy?.profileVisibility || 'public'}
+                            onChange={e => handleInputChange('settings.privacy.profileVisibility', e.target.value)}
+                        >
+                            <option value="public">Public (Visible to everyone)</option>
+                            <option value="friends">Friends Only</option>
+                            <option value="private">Private (Only me)</option>
+                        </select>
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-slate-800 rounded-lg">
+                        <div>
+                            <p className="text-slate-200 font-medium">Show GPA on Profile</p>
+                            <p className="text-xs text-slate-400">Allow others to see your GPA.</p>
+                        </div>
+                        <input
+                            type="checkbox"
+                            className="toggle toggle-primary"
+                            checked={formData.settings?.privacy?.showGPA || false}
+                            onChange={e => handleInputChange('settings.privacy.showGPA', e.target.checked)}
+                        />
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-slate-800 rounded-lg">
+                        <div>
+                            <p className="text-slate-200 font-medium">Activity Feed Visibility</p>
+                            <p className="text-xs text-slate-400">Share your study streaks and game activity.</p>
+                        </div>
+                        <input // Using simple checkbox for now, can be toggle component
+                            type="checkbox"
+                            checked={formData.settings?.privacy?.showActivity !== false} // Default true
+                            onChange={e => handleInputChange('settings.privacy.showActivity', e.target.checked)}
+                        />
+                    </div>
+                </div>
+            </div>
+            <div className="bg-slate-800/50 p-6 rounded-xl ring-1 ring-slate-700">
+                <h4 className="text-lg font-medium text-white mb-4">Data Management</h4>
+                <Button variant="outline" size="sm">Export My Data</Button>
             </div>
         </div>
     );
@@ -370,6 +501,14 @@ const Profile: React.FC = () => {
                         <Shield size={18} className="mr-3" />
                         Security
                     </button>
+                    <button
+                        onClick={() => setActiveTab('privacy')}
+                        className={`w-full flex items-center p-3 rounded-lg transition-all ${activeTab === 'privacy' ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/20' : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                    >
+                        <Settings size={18} className="mr-3" />
+                        Privacy
+                    </button>
+                    {/* Achievements Tab Button - optional based on design, maybe inside Insights */}
                 </div>
 
                 {/* Main Content Area */}
@@ -379,6 +518,7 @@ const Profile: React.FC = () => {
                         {activeTab === 'education' && <EducationTab />}
                         {activeTab === 'preferences' && <PreferencesTab />}
                         {activeTab === 'security' && <SecurityTab />}
+                        {activeTab === 'privacy' && <PrivacyTab />}
 
                         {/* Save Button (Floating or Fixed at bottom) */}
                         <div className="mt-8 pt-6 border-t border-slate-700 flex justify-end">
