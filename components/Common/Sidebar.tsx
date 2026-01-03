@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { Button } from './ui';
 import ProfileEditModal from '../Modals/ProfileEditModal';
 import { useAuth } from '../../hooks/useAuth';
-import { LayoutDashboard, MessageSquare, FileText, BrainCircuit, LogOut, BarChart2, Users, Edit3, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, FileText, BrainCircuit, LogOut, BarChart2, Users, Edit3, X, ChevronLeft, ChevronRight, BookOpen, Video } from 'lucide-react';
 
 const navigation = [
   { name: 'Study Hub', href: '/', icon: LayoutDashboard },
@@ -11,7 +11,9 @@ const navigation = [
   { name: 'Notes', href: '/notes', icon: FileText },
   { name: 'AI Tutor', href: '/tutor', icon: MessageSquare },
   { name: 'Study Room', href: '/study-lobby', icon: Users },
-  { name: 'Community', href: '/social', icon: Users }, // New Link
+  { name: 'Community', href: '/social', icon: Users },
+  { name: 'Marketplace', href: '/marketplace', icon: BookOpen }, // New
+  { name: 'Live Sessions', href: '/live-sessions', icon: Video }, // New
 ];
 
 interface SidebarProps {

@@ -27,6 +27,8 @@ const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const Profile = lazy(() => import('./pages/Profile'));
+const CourseMarketplace = lazy(() => import('./pages/CourseMarketplace'));
+const LiveSessions = lazy(() => import('./pages/LiveSessions'));
 
 const AuthLayout: React.FC = () => (
   <div className="flex items-center justify-center min-h-screen bg-slate-900">
@@ -66,6 +68,8 @@ const App: React.FC = () => {
                   <Route path="group/:id" element={<GroupDetails />} /> {/* New Route */}
                   <Route path="insights" element={<Insights />} />
                   <Route path="notes" element={<Notes />} />
+                  <Route path="marketplace" element={<CourseMarketplace />} />
+                  <Route path="live-sessions" element={<LiveSessions />} />
                   <Route path="community/:courseId" element={<CourseCommunity />} />
                   <Route path="quizzes" element={<QuizPractice />} />
                   <Route path="interview" element={<InterviewQuiz />} />
