@@ -118,7 +118,7 @@ const Signup: React.FC = () => {
     try {
       await signup(displayName, email, password, university);
       addToast('Account created successfully! Redirecting...', 'success');
-      setTimeout(() => navigate('/'), 1500);
+      setTimeout(() => navigate('/login'), 1500);
     } catch (err: any) {
       addToast(err.message || 'Failed to create an account. Please try again.', 'error');
     } finally {
