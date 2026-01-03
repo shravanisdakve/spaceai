@@ -117,6 +117,16 @@ def start_frontend():
     log("Starting Frontend...", "info")
     start_process(FRONTEND_CMD, cwd=ROOT_DIR)
 
+def start_auth_backend():
+    log("Starting Auth Backend (Port 5000)...", "info")
+    backend_dir = os.path.join(ROOT_DIR, "backend")
+    # Check if directory exists
+    if os.path.exists(backend_dir):
+        # Run node server.js from within the backend directory so it finds its .env
+        start_process("node server.js", cwd=backend_dir, shell=True) 
+    else:
+        log("Backend directory not found!", "error")
+
 def cleanup():
     log("Stopping all services...", "warning")
     for proc in processes:
@@ -153,6 +163,9 @@ def main():
         
         start_domain_models()
         time.sleep(2) # Wait for models to stabilize
+
+        start_auth_backend()
+        time.sleep(2)
         
         start_frontend()
         
