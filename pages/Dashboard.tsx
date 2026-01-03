@@ -1,24 +1,31 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PageHeader, Button, Input, Skeleton } from '../components/Common/ui';
+import { Button, Input, Skeleton } from '../components/Common/ui';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { type Course, type Mood as MoodType } from '../types';
-import { getTimeOfDayGreeting, getMostUsedTool } from '../services/personalizationService';
+import { getMostUsedTool } from '../services/personalizationService';
 import { getProductivityReport } from '../services/analyticsService';
 import { getCourses, addCourse, deleteCourse } from '../services/courseService';
 import GoalsWidget from '../components/Dashboard/GoalsWidget';
-import MoodCheckin from '../components/Dashboard/MoodCheckin'; // Import new MoodCheckin from new location
-import { getSuggestionForMood } from '../services/geminiService'; // Import AI suggestion service
+import MoodCheckin from '../components/Dashboard/MoodCheckin';
+import { getSuggestionForMood } from '../services/geminiService';
 import { formatSeconds } from '../utils/formatters';
 import {
-    MessageSquare, Share2, FileText, Code, ArrowRight,
-    Target, Lightbulb, Timer, Zap, BookOpen,
-    Play, Pause, RefreshCw, PlusCircle, Trash2, User, Users, Star,
-    BarChart, Clock, Brain, TrendingUp, TrendingDown, Repeat, Sparkles // Added Sparkles
+    MessageSquare, FileText, ArrowRight,
+    Target, Zap, BookOpen,
+    Trash2, Star, Users,
+    BarChart, Clock, Brain, Sparkles, PlusCircle
 } from 'lucide-react';
 import { getAdaptiveRecommendations } from '../services/analyticsService';
 import { type AdaptiveRecommendation } from '../types';
+
+// New Components
+import DashboardHeader from '../components/Dashboard/DashboardHeader';
+import QuickActions from '../components/Dashboard/QuickActions';
+import RecentActivity from '../components/Dashboard/RecentActivity';
+
+// --- SUB COMPONENTS (Kept or Simplified) ---
 
 const ProductivityInsights: React.FC = () => {
     const [report, setReport] = useState<Awaited<ReturnType<typeof getProductivityReport>> | null>(null);
@@ -39,86 +46,60 @@ const ProductivityInsights: React.FC = () => {
         fetchReport();
     }, []);
 
-    if (isLoading) {
-        return (
-            <div className="bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700">
-                <h3 className="text-xl font-bold text-slate-100 flex items-center mb-4">
-                    <BarChart className="w-6 h-6 mr-3 text-violet-400" /> Weekly Snapshot
-                </h3>
-                <div className="space-y-4">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                </div>
-            </div>
-        );
-    }
+    if (isLoading) return <Skeleton className="h-40 w-full" />;
 
     if (!report) return (
         <div className="bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700 text-center">
-            <p className="text-slate-400">Could not load productivity data.</p>
+            <p className="text-slate-400">No data available.</p>
         </div>
     );
 
     const hasData = report.totalStudyTime > 0 || report.totalQuizzes > 0;
 
     return (
-        <div className="bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700">
-            <h3 className="text-xl font-bold text-slate-100 flex items-center mb-4">
-                <BarChart className="w-6 h-6 mr-3 text-violet-400" /> Weekly Snapshot
+        <div className="bg-slate-800/40 rounded-xl p-6 ring-1 ring-slate-700">
+            <h3 className="text-lg font-bold text-slate-100 flex items-center mb-4">
+                <BarChart className="w-5 h-5 mr-2 text-violet-400" /> Weekly Snapshot
             </h3>
             {!hasData ? (
-                <p className="text-center text-slate-400 py-4">Start a study session or take a quiz to see your insights here.</p>
+                <p className="text-center text-slate-400 py-4 text-sm">Start studying to see data.</p>
             ) : (
-                <div className="space-y-4">
-                    <div className="flex justify-between items-center text-sm bg-slate-800 p-3 rounded-lg">
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center text-sm bg-slate-800 p-3 rounded-lg border border-slate-700/50">
                         <div className="flex items-center gap-2">
-                            <Clock size={16} className="text-slate-400" />
-                            <span className="font-medium text-slate-300">Total Study Time</span>
+                            <Clock size={16} className="text-sky-400" />
+                            <span className="font-medium text-slate-300">Time</span>
                         </div>
-                        {/* Make sure formatSeconds is defined or imported */}
-                        <span className="font-mono text-white">{formatSeconds(report.totalStudyTime)}</span>
+                        <span className="font-mono text-white font-bold">{formatSeconds(report.totalStudyTime)}</span>
                     </div>
-                    <div className="flex justify-between items-center text-sm bg-slate-800 p-3 rounded-lg">
+                    <div className="flex justify-between items-center text-sm bg-slate-800 p-3 rounded-lg border border-slate-700/50">
                         <div className="flex items-center gap-2">
-                            <Brain size={16} className="text-slate-400" />
-                            <span className="font-medium text-slate-300">Quiz Accuracy</span>
+                            <Brain size={16} className="text-rose-400" />
+                            <span className="font-medium text-slate-300">Accuracy</span>
                         </div>
-                        <span className="font-mono text-white">{report.quizAccuracy}%</span>
+                        <span className="font-mono text-white font-bold">{report.quizAccuracy}%</span>
                     </div>
                 </div>
             )}
-            <Link to="/insights">
-                <Button className="w-full mt-6 text-sm">View Detailed Insights</Button>
+            <Link to="/insights" className="block text-center mt-3 text-xs text-slate-400 hover:text-white transition-colors">
+                View Analytics &rarr;
             </Link>
         </div>
     );
 };
 
 const MyCourses: React.FC = () => {
-
     const [courses, setCourses] = useState<Course[]>([]);
-
     const [newCourseName, setNewCourseName] = useState('');
-
     const [isAdding, setIsAdding] = useState(false);
-
     const [isLoading, setIsLoading] = useState(true);
-
     const [lastVisibleDocId, setLastVisibleDocId] = useState<string | null>(null);
-
     const [hasMoreCourses, setHasMoreCourses] = useState(true);
-
-
-
-    const COURSE_LIMIT = 5; // Define a limit for courses to fetch per page
-
-
-
-    const { showToast } = useToast(); // Needs to be inside MyCourses component, import useToast first
+    const COURSE_LIMIT = 5;
+    const { showToast } = useToast();
 
     const fetchCourses = async (loadMore: boolean = false) => {
         setIsLoading(true);
-        console.log("MyCourses: Fetching courses...");
         try {
             const { courses: newCourses, lastVisibleDocId: newLastVisibleDocId } = await getCourses(loadMore ? lastVisibleDocId : null, COURSE_LIMIT);
             setCourses(prev => loadMore ? [...prev, ...(newCourses || [])] : (newCourses || []));
@@ -126,193 +107,107 @@ const MyCourses: React.FC = () => {
             setHasMoreCourses((newCourses || []).length === COURSE_LIMIT);
         } catch (error) {
             console.error("Error fetching courses:", error);
-            showToast("Failed to load courses.", 'error');
         } finally {
             setIsLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchCourses();
-    }, []);
+    useEffect(() => { fetchCourses(); }, []);
 
     const handleAddCourse = async (e: React.FormEvent) => {
         e.preventDefault();
         if (newCourseName.trim()) {
-            console.log("MyCourses: Adding course:", newCourseName);
             try {
-                const newCourse = await addCourse(newCourseName.trim());
-                if (newCourse) {
-                    console.log("MyCourses: Added course:", newCourse);
-                    fetchCourses();
-                    showToast("Course added successfully!", 'success');
-                }
+                await addCourse(newCourseName.trim());
+                fetchCourses();
+                showToast("Course added!", 'success');
                 setNewCourseName('');
                 setIsAdding(false);
             } catch (error) {
-                console.error("Error adding course:", error);
-                showToast("Failed to add course. Please try again.", 'error');
+                showToast("Failed to add course.", 'error');
             }
         }
     }
 
     const handleDeleteCourse = async (id: string) => {
-        console.log("MyCourses: Deleting course:", id);
         try {
             await deleteCourse(id);
             fetchCourses();
-            showToast("Course deleted successfully!", 'success');
+            showToast("Course deleted.", 'success');
         } catch (error) {
-            console.error("Error deleting course:", error);
             showToast("Failed to delete course.", 'error');
         }
     }
 
-
-
     return (
-
-        <div className="bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700">
-
-            <h3 className="text-xl font-bold text-slate-100 flex items-center mb-4">
-
-                <BookOpen className="w-6 h-6 mr-3 text-violet-400" /> My Courses
-
+        <div className="bg-slate-800/40 rounded-xl p-6 ring-1 ring-slate-700 flex flex-col h-full">
+            <h3 className="text-lg font-bold text-slate-100 flex items-center mb-4 justify-between">
+                <span className="flex items-center"><BookOpen className="w-5 h-5 mr-2 text-violet-400" /> My Courses</span>
+                <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{courses?.length || 0}</span>
             </h3>
 
-            <div className="space-y-2">
-
-                {isLoading && (
-
-                    <>
-
-                        <Skeleton className="h-12 w-full" />
-
-                        <Skeleton className="h-12 w-full" />
-
-                        <Skeleton className="h-12 w-full" />
-
-                    </>
-
+            <div className="space-y-2 flex-1 overflow-y-auto max-h-[300px] pr-1 custom-scrollbar">
+                {isLoading && <Skeleton className="h-10 w-full" />}
+                {!isLoading && (!courses || courses.length === 0) && (
+                    <p className="text-slate-500 text-sm text-center py-2">No courses yet.</p>
                 )}
-
-                {!isLoading && (!courses || courses.length === 0) && ( // Removed !isAdding from condition
-
-                    <div className="text-center py-4">
-
-                        <p className="text-slate-400 mb-4">You haven't added any courses yet. Add one to get started!</p>
-
-                    </div>
-
-                )}
-
                 {courses && courses.length > 0 && courses.map(course => (
-
-                    <Link to="/notes" state={{ courseId: course.id }} key={course.id} className="group flex items-center justify-between bg-slate-800 p-3 rounded-lg hover:bg-slate-700 transition-colors">
-
+                    <Link to="/notes" state={{ courseId: course.id }} key={course.id} className="group flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-700/50 transition-colors border border-transparent hover:border-slate-700">
                         <div className="flex items-center overflow-hidden mr-2">
-
-                            <span className="w-3 h-3 rounded-full mr-3 flex-shrink-0" style={{ backgroundColor: course.color }}></span>
-
-                            <span className="font-medium text-slate-300 truncate">{course.name}</span>
-
+                            <span className="w-2.5 h-2.5 rounded-full mr-3 flex-shrink-0 shadow-sm" style={{ backgroundColor: course.color }}></span>
+                            <span className="text-sm font-medium text-slate-300 truncate group-hover:text-white transition-colors">{course.name}</span>
                         </div>
-
-                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteCourse(course.id); }} className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-
-                            <Trash2 size={16} />
-
+                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteCourse(course.id); }} className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all p-1">
+                            <Trash2 size={14} />
                         </button>
-
                     </Link>
-
                 ))}
-
             </div>
 
-            {hasMoreCourses && !isLoading && (
-
-                <Button onClick={() => fetchCourses(true)} className="w-full mt-4 text-sm" variant="outline">
-
-                    Load More
-
-                </Button>
-
-            )}
-
+            {/* Add Button */}
             {isAdding ? (
-                <form onSubmit={handleAddCourse} className="mt-4 flex gap-2">
+                <form onSubmit={handleAddCourse} className="mt-4 flex gap-2 animate-in fade-in slide-in-from-top-1">
                     <Input
                         value={newCourseName}
                         onChange={(e) => setNewCourseName(e.target.value)}
-                        placeholder="e.g., Organic Chemistry"
-                        className="text-sm flex-1" // Added flex-1
+                        placeholder="Course Name"
+                        className="text-xs py-2 h-8"
                         autoFocus
                     />
-                    <Button type="submit" className="px-3 py-2 text-sm">Add</Button>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setIsAdding(false)} className="px-3 py-2 text-sm text-slate-400">Cancel</Button> {/* Added Cancel */}
+                    <Button type="submit" className="px-2 py-0 h-8 text-xs">Add</Button>
+                    <button type="button" onClick={() => setIsAdding(false)} className="text-slate-500 hover:text-slate-300"><Trash2 size={14} /></button>
                 </form>
             ) : (
-                <Button onClick={() => setIsAdding(true)} className="w-full mt-4 bg-slate-700/50 hover:bg-slate-700 text-sm shadow-none">
-                    <PlusCircle size={16} className="mr-2" />
-                    Add Course
-                </Button>
+                <button onClick={() => setIsAdding(true)} className="w-full mt-3 py-2 border border-dashed border-slate-700 text-slate-400 text-xs rounded-lg hover:bg-slate-800 hover:text-white hover:border-slate-600 transition-all flex items-center justify-center gap-2">
+                    <PlusCircle size={14} /> Add New Course
+                </button>
             )}
-            {/* Error handling logic is in handleAddCourse */}
-
-        </div >
+        </div>
     );
 }
 
 const tools = [
-    { key: 'tutor', name: 'AI Tutor', href: '/tutor', description: 'Practice concepts with your AI tutor.', icon: MessageSquare, color: 'text-sky-400', bgColor: 'bg-sky-900/50' },
-    { key: 'summaries', name: 'Summaries Generator', href: '/notes', description: 'Generate summaries from your notes.', icon: FileText, color: 'text-emerald-400', bgColor: 'bg-emerald-900/50' },
-    { key: 'quizzes', name: 'Quizzes & Practice', href: '/quizzes', description: 'Test your knowledge with practice quizzes.', icon: Brain, color: 'text-rose-400', bgColor: 'bg-rose-900/50' },
-    // Removed Study Group and Progress tracking as they were placeholders or now integrated elsewhere
+    { key: 'tutor', name: 'AI Tutor', href: '/tutor', description: 'Practice concepts.', icon: MessageSquare, color: 'text-sky-400', bgColor: 'bg-sky-900/40' },
+    { key: 'summaries', name: 'Summaries', href: '/notes', description: 'Generate summaries.', icon: FileText, color: 'text-emerald-400', bgColor: 'bg-emerald-900/40' },
+    { key: 'quizzes', name: 'Quizzes', href: '/quizzes', description: 'Test knowledge.', icon: Brain, color: 'text-rose-400', bgColor: 'bg-rose-900/40' },
 ];
 
-interface ToolCardProps {
-    name: string;
-    href: string;
-    description: string;
-    icon: React.ElementType;
-    color: string;
-    bgColor: string;
-}
-const ToolCard: React.FC<ToolCardProps> = ({ name, href, description, icon: Icon, color, bgColor }) => {
-    return (
-        <Link to={href} className="group block p-6 bg-slate-800 rounded-xl hover:bg-slate-700/80 transition-all duration-300 ring-1 ring-slate-700 hover:ring-violet-500">
-            <div className="flex items-center space-x-4">
-                <div className={`p-3 rounded-lg ${bgColor}`}>
-                    <Icon className={`w-6 h-6 ${color}`} />
+const ToolsList: React.FC = () => (
+    <div className="space-y-3">
+        {tools.map((tool) => (
+            <Link key={tool.key} to={tool.href} className="group flex items-center p-3 bg-slate-800/40 rounded-xl hover:bg-slate-700/60 transition-all duration-300 border border-slate-700/50 hover:border-violet-500/30">
+                <div className={`p-2 rounded-lg ${tool.bgColor} mr-3`}>
+                    <tool.icon className={`w-5 h-5 ${tool.color}`} />
                 </div>
-                <h3 className="text-lg font-bold text-slate-100">{name}</h3>
-            </div>
-            <p className="mt-3 text-sm text-slate-400">{description}</p>
-            <div className="mt-4 flex items-center text-sm font-semibold text-violet-400 group-hover:text-violet-300">
-                <span>Start Session</span>
-                <ArrowRight className="ml-2 w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
-            </div>
-        </Link>
-    );
-};
-
-const ToolsGrid: React.FC = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-        {/* --- FIX: Destructure key from the rest of the props --- */}
-        {tools.map(tool => {
-            const { key, ...rest } = tool; // 'key' is for React, 'rest' has all other props
-            return <ToolCard key={key} {...rest} />;
-        })}
-        {/* --- END FIX --- */}
+                <div className="flex-1">
+                    <h4 className="text-sm font-bold text-slate-200 group-hover:text-white">{tool.name}</h4>
+                    <p className="text-xs text-slate-500">{tool.description}</p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-violet-400 group-hover:translate-x-1 transition-all" />
+            </Link>
+        ))}
     </div>
 );
-
-const taglines = [
-    "Ready to make today a productive one?",
-    "Let's get started on your goals.",
-    "Your central hub for accelerated learning. Let's get started."
-];
 
 const AdaptiveLearningWidget: React.FC = () => {
     const { currentUser } = useAuth();
@@ -327,156 +222,112 @@ const AdaptiveLearningWidget: React.FC = () => {
         });
     }, [currentUser]);
 
-    if (loading) return null;
-    if (!recommendation) return null; // No struggle detected, don't show
+    if (loading) return <Skeleton className="h-32 w-full" />;
+    if (!recommendation) return null;
 
     return (
-        <div className="bg-gradient-to-r from-violet-900/50 to-fuchsia-900/50 rounded-xl p-6 ring-1 ring-violet-500/50 shadow-lg shadow-violet-500/10 mb-8 border-l-4 border-violet-500 relative overflow-hidden">
-
-            <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 bg-violet-500/20 rounded-full blur-2xl"></div>
-
+        <div className="bg-gradient-to-br from-violet-900/80 to-indigo-900/80 rounded-xl p-5 ring-1 ring-violet-500/40 shadow-lg relative overflow-hidden mb-6 group">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full blur-2xl -mr-8 -mt-8"></div>
             <div className="relative z-10">
-                <div className="flex items-center gap-3 mb-3">
-                    <Sparkles className="w-6 h-6 text-yellow-300 animate-pulse" />
-                    <h3 className="text-lg font-bold text-white">AI Adaptive Recommendation</h3>
+                <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-5 h-5 text-yellow-300 animate-pulse" />
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">Recommended Focus</h3>
                 </div>
-
-                <h4 className="text-xl font-semibold text-violet-200 mb-2">
-                    Focus Area: <span className="text-white">{recommendation.topic}</span>
-                </h4>
-
-                <p className="text-slate-300 mb-4 max-w-2xl">
-                    {recommendation.suggestion}
-                </p>
-
-                <div className="flex gap-3">
-                    <Link to="/quizzes">
-                        <Button className="bg-white text-violet-900 hover:bg-violet-100 border-none">
-                            <Target className="w-4 h-4 mr-2" />
-                            Practice {recommendation.topic}
-                        </Button>
-                    </Link>
-                </div>
+                <h4 className="text-lg font-bold text-violet-100 mb-1">{recommendation.topic}</h4>
+                <p className="text-sm text-indigo-200 mb-4 line-clamp-2">{recommendation.suggestion}</p>
+                <Link to="/quizzes">
+                    <Button size="sm" className="w-full bg-white/10 hover:bg-white/20 text-white border-0 text-xs">
+                        <Target className="w-3 h-3 mr-2" /> Practice Now
+                    </Button>
+                </Link>
             </div>
         </div>
     );
 };
 
-const SESSION_MOOD_CHECKIN_KEY = 'nexusMoodCheckedInSession'; // Key for sessionStorage
+const SESSION_MOOD_CHECKIN_KEY = 'nexusMoodCheckedInSession';
 
 const StudyHub: React.FC = () => {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
-    const [mostUsedToolKey, setMostUsedToolKey] = useState<string | null>(null);
     const [showMoodCheckin, setShowMoodCheckin] = useState(() => {
         try {
-            // Check if the flag exists in sessionStorage
             return !sessionStorage.getItem(SESSION_MOOD_CHECKIN_KEY);
-        } catch (error) {
-            console.error("Error accessing sessionStorage:", error);
-            return true; // Default to showing if sessionStorage is unavailable
-        }
+        } catch { return true; }
     });
-    const [aiSuggestion, setAiSuggestion] = useState<string | null>(null); // New state for AI suggestion
-    const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false); // New state for loading
+    const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
 
-    useEffect(() => {
-        const fetchMostUsedTool = async () => {
-            const toolKey = await getMostUsedTool();
-            setMostUsedToolKey(toolKey);
-        };
-        fetchMostUsedTool();
-
-    }, []);
-
-    const handleMoodSelected = async (mood: string) => { // Modified to accept mood string. Debug: verified mood is string.
+    const handleMoodSelected = async (mood: string) => {
         setShowMoodCheckin(false);
-        try {
-            sessionStorage.setItem(SESSION_MOOD_CHECKIN_KEY, 'true'); // Mark as checked in for this session
-        } catch (error) {
-            console.error("Error setting sessionStorage:", error);
-        }
-        setIsLoadingSuggestion(true);
-        setAiSuggestion(null); // Clear old suggestion
-
+        try { sessionStorage.setItem(SESSION_MOOD_CHECKIN_KEY, 'true'); } catch { }
         try {
             const suggestion = await getSuggestionForMood(mood);
             setAiSuggestion(suggestion);
-        } catch (error) {
-            console.error("Error getting AI suggestion:", error);
-            setAiSuggestion("Couldn't get a suggestion right now.");
-        } finally {
-            setIsLoadingSuggestion(false);
-        }
+        } catch { }
     }
 
-    const greeting = getTimeOfDayGreeting();
-    const mostUsedTool = tools.find(t => t.key === mostUsedToolKey);
-    const firstName = currentUser?.displayName?.split(' ')[0] || 'User';
-    const tagline = useMemo(() => taglines[Math.floor(Math.random() * taglines.length)], []);
-
     return (
-        <div className="space-y-8">
-            <PageHeader title={`${greeting}, ${firstName}!`} subtitle={tagline} />
+        <div className="pb-12">
+            {/* 1. Header Section */}
+            <DashboardHeader />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-8">
-                    <div className="bg-slate-800/50 rounded-xl p-6 ring-1 ring-slate-700 text-center">
-                        <h2 className="text-2xl font-bold text-slate-100 mb-2 flex items-center justify-center">
-                            <Zap className="w-6 h-6 mr-3 text-yellow-400" />
-                            Enter a Study Room
-                        </h2>
-                        <p className="text-slate-400 mb-6 max-w-xl mx-auto">Create or join a room to collaborate with friends, chat with an AI study buddy, and hold each other accountable.</p>
-                        <Button onClick={() => navigate('/study-lobby')} className="px-8 py-4 text-lg">
-                            <Users className="w-5 h-5 mr-2" />
-                            Go to Study Lobby
-                        </Button>
+            {/* 2. Quick Actions */}
+            <QuickActions />
+
+            {/* 3. Main Three-Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+
+                {/* COLUMN 1: Tools & Study Room (Left) - Span 3 */}
+                <div className="lg:col-span-3 space-y-6">
+                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 ring-1 ring-slate-700 shadow-md text-center">
+                        <div className="w-12 h-12 bg-indigo-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-400">
+                            <Users size={24} />
+                        </div>
+                        <h3 className="text-lg font-bold text-white mb-2">Study Room</h3>
+                        <p className="text-xs text-slate-400 mb-4">Join a focused session with peers or AI.</p>
+                        <Link to="/study-lobby">
+                            <Button className="w-full text-sm">Enter Lobby</Button>
+                        </Link>
                     </div>
 
-                    <div>
-                        {mostUsedTool && (
-                            <div className="mb-8">
-                                <h2 className="text-2xl font-bold text-slate-100 mb-4 flex items-center"><Star className="w-6 h-6 mr-3 text-yellow-400" /> Quick Access</h2>
-                                <Link to={mostUsedTool.href} className="group block p-6 bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl hover:bg-slate-700/80 transition-all duration-300 ring-2 ring-violet-500 shadow-lg shadow-violet-500/10">
-                                    <div className="flex items-center space-x-4">
-                                        <div className={`p-3 rounded-lg ${mostUsedTool.bgColor}`}>
-                                            <mostUsedTool.icon className={`w-6 h-6 ${mostUsedTool.color}`} />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-bold text-slate-100">{mostUsedTool.name}</h3>
-                                            <p className="mt-1 text-sm text-slate-400">{mostUsedTool.description}</p>
-                                        </div>
-                                        <ArrowRight className="ml-auto w-5 h-5 text-slate-400 transition-transform duration-300 group-hover:translate-x-1 group-hover:text-violet-400" />
-                                    </div>
-                                </Link>
-                            </div>
-                        )}
-                        <h2 className="text-2xl font-bold text-slate-100 mb-4">Your AI Toolkit</h2>
-                        <ToolsGrid />
+                    <div className="bg-slate-800/20 rounded-xl p-5 ring-1 ring-slate-800">
+                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">AI Toolkit</h3>
+                        <ToolsList />
                     </div>
                 </div>
 
-                <div className="space-y-8">
-                    <GoalsWidget />
+                {/* COLUMN 2: Focus & Recommendations (Center) - Span 6 */}
+                <div className="lg:col-span-6 space-y-6">
+                    {/* Mood & AI Suggestion */}
                     {showMoodCheckin && <MoodCheckin onMoodSelect={handleMoodSelected} />}
-
-                    {(isLoadingSuggestion || aiSuggestion) && (
-                        <div className="bg-slate-800/50 p-4 rounded-xl ring-1 ring-slate-700 flex items-center gap-4">
-                            <Sparkles className="text-sky-400 w-8 h-8 flex-shrink-0" />
+                    {aiSuggestion && (
+                        <div className="bg-sky-900/30 border border-sky-500/30 p-4 rounded-xl flex gap-3 items-start animate-in fade-in slide-in-from-top-2">
+                            <Sparkles className="text-sky-400 w-5 h-5 flex-shrink-0 mt-0.5" />
                             <div>
-                                <h4 className="font-semibold text-lg text-sky-300">Smart Suggestion</h4>
-                                {isLoadingSuggestion && <p className="text-slate-300">Thinking...</p>}
-                                {aiSuggestion && <p className="text-slate-100">{aiSuggestion}</p>}
+                                <h4 className="font-semibold text-sm text-sky-200">AI Tip for You</h4>
+                                <p className="text-sm text-sky-100">{aiSuggestion}</p>
                             </div>
                         </div>
                     )}
 
-                    {/* Add Adaptive Strategy Widget */}
-                    <AdaptiveLearningWidget />
+                    {/* Today's Focus (Goals) */}
+                    <div className="bg-slate-800/40 rounded-xl p-6 ring-1 ring-slate-700 min-h-[300px]">
+                        <GoalsWidget />
+                    </div>
 
-                    <ProductivityInsights />
-                    <MyCourses />
+                    {/* Adaptive Learning */}
+                    <AdaptiveLearningWidget />
                 </div>
+
+                {/* COLUMN 3: Activity & Stats (Right) - Span 3 */}
+                <div className="lg:col-span-3 space-y-6">
+                    <ProductivityInsights />
+                    <RecentActivity />
+                    <div className="h-[400px]">
+                        <MyCourses />
+                    </div>
+                </div>
+
             </div>
         </div>
     );

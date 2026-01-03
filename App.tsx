@@ -1,12 +1,10 @@
-
 import React, { useState, lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
-import Sidebar from './components/Common/Sidebar';
 import { useAuth, AuthProvider } from './hooks/useAuth';
-import { Button, Spinner } from './components/Common/ui'; // Adjusted path for ui
-import { Menu } from 'lucide-react';
-import ErrorBoundary from './components/Common/ErrorBoundary'; // Import Error Boundary from new location
-import { ToastProvider } from './hooks/useToast'; // Import ToastProvider
+import { Spinner } from './components/Common/ui';
+import ErrorBoundary from './components/Common/ErrorBoundary';
+import { ToastProvider } from './hooks/useToast';
+import MainLayout from './components/Layout/MainLayout'; // Import new layout
 
 // Lazy load page components
 const StudyHub = lazy(() => import('./pages/Dashboard'));
@@ -28,43 +26,11 @@ const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const Profile = lazy(() => import('./pages/Profile'));
 
-
 const AuthLayout: React.FC = () => (
   <div className="flex items-center justify-center min-h-screen bg-slate-900">
     <Outlet />
   </div>
 );
-
-const MainLayout: React.FC = () => {
-  // ... (unchanged)
-  const [isSidebarOpen, setSidebarOpen] = useState(false);
-
-  return (
-    <div className="flex h-screen bg-slate-900 text-slate-200">
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <main className="flex-1 flex flex-col overflow-y-auto">
-        {/* Header for mobile */}
-        <div className="md:hidden flex items-center justify-between p-4 border-b border-slate-700">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSidebarOpen(true)}
-            className="p-2"
-          >
-            <Menu size={24} />
-          </Button>
-          {/* You can add a logo or page title here for mobile view */}
-          <span className="font-bold text-lg">NexusAI</span>
-        </div>
-        <div className="p-4 sm:p-6 lg:p-8 h-full">
-          <Outlet />
-        </div>
-      </main>
-    </div>
-  );
-};
-
-// ... (ProtectedRoute unchanged)
 
 const App: React.FC = () => {
   const { currentUser, loading } = useAuth();
