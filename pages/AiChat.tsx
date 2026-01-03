@@ -216,8 +216,8 @@ const AiTutor: React.FC = () => {
                 if (activeNoteContent) {
                     stream = await streamStudyBuddyChat(currentMessage, activeNoteContent);
                 } else {
-                    // Fallback to local or generic chat if no notes
-                    stream = await streamLocalChat([...messages, newUserMessage], selectedDomainId);
+                    // Use Gemini for general chat instead of local model to fix critical API failures
+                    stream = await streamChat(currentMessage);
                 }
 
                 for await (const chunk of stream) {
