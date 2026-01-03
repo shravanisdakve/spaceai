@@ -24,7 +24,7 @@ import { streamStudyBuddyChat, generateQuizQuestion, extractTextFromFile } from 
 import { startSession, endSession, recordQuizResult } from '../services/analyticsService';
 import DOMPurify from 'dompurify'; // Import DOMPurify
 // --- REMOVED Clock import here ---
-import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, Smile, FolderOpen, AlertTriangle, Info } from 'lucide-react';
+import { Bot, User, Send, MessageSquare, Users, Brain, UploadCloud, Lightbulb, FileText, Paperclip, Smile, FolderOpen, AlertTriangle, Info, RotateCcw } from 'lucide-react';
 // --- END REMOVAL ---
 import { Input, Button, Textarea, Spinner } from '../components/Common/ui';
 import RoomControls from '../components/StudyRoom/RoomControls'; //
@@ -34,12 +34,14 @@ import MusicPlayer from '../components/Common/MusicPlayer'; // NEW
 import ShareModal from '../components/Modals/ShareModal'; // NEW
 import StudyRoomNotesPanel from '../components/StudyRoom/StudyRoomNotesPanel'; // Import the new component from new location
 import PomodoroTimer from '../components/StudyRoom/PomodoroTimer'; // NEW
+import FeynmanBoard from '../components/StudyRoom/FeynmanBoard'; // NEW
+import StudyFlashcards from '../components/StudyRoom/StudyFlashcards'; // NEW
 import { startFeynmanSession } from '../services/geminiService'; // NEW
 
 
 // ... (Helper Types & formatElapsedTime function remain the same) ...
 // --- Helper Types & Constants ---
-type ActiveTab = 'chat' | 'participants' | 'ai' | 'notes';
+type ActiveTab = 'chat' | 'participants' | 'ai' | 'notes' | 'feynman' | 'flashcards';
 
 
 interface Quiz {
@@ -245,7 +247,13 @@ const StudyRoom: React.FC = () => {
 
         // --- REMOVED: let sessionId: string | null = null; ---
 
-        joinRoom(roomId, currentUser);
+        // Ensure user object matches expected structure with required displayName
+        const roomUser = {
+            email: currentUser.email,
+            displayName: currentUser.displayName || 'Anonymous User'
+        };
+
+        joinRoom(roomId, roomUser);
 
         // --- FIX 2: Use the sessionIdRef ---
         startSession('study-room', roomId).then(id => {
@@ -308,7 +316,11 @@ const StudyRoom: React.FC = () => {
             unsubResources();
             unsubQuiz();
             if (currentUser) {
-                leaveRoom(roomId, currentUser);
+                const leaveUser = {
+                    email: currentUser.email,
+                    displayName: currentUser.displayName || 'Anonymous User'
+                };
+                leaveRoom(roomId, leaveUser);
             }
 
             // --- FIX 2 (cleanup): Use the ref here as well ---
@@ -362,7 +374,11 @@ const StudyRoom: React.FC = () => {
         // --- END FIX ---
 
         if (roomId && currentUser) {
-            await leaveRoom(roomId, currentUser);
+            const leaveUser = {
+                email: currentUser.email,
+                displayName: currentUser.displayName || 'Anonymous User'
+            };
+            await leaveRoom(roomId, leaveUser);
         }
         localStream?.getTracks().forEach(track => track.stop());
         navigate('/study-lobby');
@@ -687,11 +703,13 @@ const StudyRoom: React.FC = () => {
                 {/* Side Panel */}
                 {/* ... (Side Panel Tabs and Content remain the same) ... */}
                 <aside className="w-96 bg-slate-800/70 flex flex-col h-full">
-                    <div className="flex border-b border-slate-700">
+                    <div className="flex border-b border-slate-700 overflow-x-auto scrollbar-hide">
                         <TabButton id="chat" activeTab={activeTab} setActiveTab={setActiveTab} icon={MessageSquare} label="Chat" />
-                        <TabButton id="ai" activeTab={activeTab} setActiveTab={setActiveTab} icon={Brain} label="AI Buddy" />
+                        <TabButton id="ai" activeTab={activeTab} setActiveTab={setActiveTab} icon={Brain} label="AI" />
                         <TabButton id="notes" activeTab={activeTab} setActiveTab={setActiveTab} icon={FileText} label="Notes" />
-                        <TabButton id="participants" activeTab={activeTab} setActiveTab={setActiveTab} icon={Users} label="Participants" count={participants.length} />
+                        <TabButton id="feynman" activeTab={activeTab} setActiveTab={setActiveTab} icon={Lightbulb} label="Teach" />
+                        <TabButton id="flashcards" activeTab={activeTab} setActiveTab={setActiveTab} icon={RotateCcw} label="Review" />
+                        <TabButton id="participants" activeTab={activeTab} setActiveTab={setActiveTab} icon={Users} label="People" count={participants.length} />
                     </div>
 
                     {activeTab === 'chat' && (
@@ -732,6 +750,26 @@ const StudyRoom: React.FC = () => {
                             isSavingNote={isSavingSharedNote} // Pass loading state for saving text
                             isUploading={isUploading} // Pass loading state for file upload
                         />
+                    )}
+                    {activeTab === 'feynman' && (
+                        <FeynmanBoard
+                            onStartSession={async (topic) => handleStartFeynman()} // Needs updating to accept topic properly if handled locally
+                            onSubmitExplanation={async (explanation) => {
+                                setIsAiLoading(true);
+                                // Mock AI call
+                                await new Promise(r => setTimeout(r, 1500));
+                                setIsAiLoading(false);
+                                return {
+                                    clarity: 4,
+                                    accuracy: 5,
+                                    missingConcepts: []
+                                };
+                            }}
+                            isAnalyzing={isAiLoading}
+                        />
+                    )}
+                    {activeTab === 'flashcards' && (
+                        <StudyFlashcards />
                     )}
                 </aside>
 

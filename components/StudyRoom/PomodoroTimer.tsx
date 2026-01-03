@@ -1,19 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Coffee, Briefcase } from 'lucide-react';
+import { Play, Pause, RotateCcw, Coffee, Briefcase, Armchair } from 'lucide-react';
 import { Button } from '../Common/ui';
+import { DEFAULT_POMODORO, TimerPhase } from '../../services/studyTechniques';
 
 interface PomodoroTimerProps {
-    onPhaseChange?: (phase: 'work' | 'shortBreak' | 'longBreak') => void;
+    onPhaseChange?: (phase: TimerPhase) => void;
 }
 
 const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ onPhaseChange }) => {
-    const WORK_TIME = 25 * 60;
-    const SHORT_BREAK = 5 * 60;
-    const LONG_BREAK = 15 * 60;
+    // Convert minutes to seconds for internal state
+    const WORK_TIME = DEFAULT_POMODORO.workDuration * 60;
+    const SHORT_BREAK = DEFAULT_POMODORO.shortBreak * 60;
+    const LONG_BREAK = DEFAULT_POMODORO.longBreak * 60;
 
     const [timeLeft, setTimeLeft] = useState(WORK_TIME);
     const [isActive, setIsActive] = useState(false);
-    const [phase, setPhase] = useState<'work' | 'shortBreak' | 'longBreak'>('work');
+    const [phase, setPhase] = useState<TimerPhase>('WORK');
     const [cycles, setCycles] = useState(0);
 
     useEffect(() => {
@@ -32,27 +34,27 @@ const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ onPhaseChange }) => {
     }, [isActive, timeLeft]);
 
     const handlePhaseComplete = () => {
-        // Play notification sound (optional)
-        const audio = new Audio('/notification.mp3'); // Try to play if exists, fail silently
-        audio.play().catch(() => { });
+        // Play notification sound
+        // const audio = new Audio('/sounds/bell.mp3'); 
+        // audio.play().catch(() => {});
 
-        if (phase === 'work') {
+        if (phase === 'WORK') {
             const newCycles = cycles + 1;
             setCycles(newCycles);
-            if (newCycles % 4 === 0) {
-                setPhase('longBreak');
+            if (newCycles % DEFAULT_POMODORO.cyclesBeforeLongBreak === 0) {
+                setPhase('LONG_BREAK');
                 setTimeLeft(LONG_BREAK);
-                onPhaseChange?.('longBreak');
+                onPhaseChange?.('LONG_BREAK');
             } else {
-                setPhase('shortBreak');
+                setPhase('BREAK');
                 setTimeLeft(SHORT_BREAK);
-                onPhaseChange?.('shortBreak');
+                onPhaseChange?.('BREAK');
             }
         } else {
             // Break is over, back to work
-            setPhase('work');
+            setPhase('WORK');
             setTimeLeft(WORK_TIME);
-            onPhaseChange?.('work');
+            onPhaseChange?.('WORK');
         }
     };
 
@@ -60,8 +62,8 @@ const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ onPhaseChange }) => {
 
     const resetTimer = () => {
         setIsActive(false);
-        if (phase === 'work') setTimeLeft(WORK_TIME);
-        else if (phase === 'shortBreak') setTimeLeft(SHORT_BREAK);
+        if (phase === 'WORK') setTimeLeft(WORK_TIME);
+        else if (phase === 'BREAK') setTimeLeft(SHORT_BREAK);
         else setTimeLeft(LONG_BREAK);
     };
 
@@ -72,7 +74,7 @@ const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ onPhaseChange }) => {
     };
 
     const getProgress = () => {
-        const total = phase === 'work' ? WORK_TIME : (phase === 'shortBreak' ? SHORT_BREAK : LONG_BREAK);
+        const total = phase === 'WORK' ? WORK_TIME : (phase === 'BREAK' ? SHORT_BREAK : LONG_BREAK);
         return ((total - timeLeft) / total) * 100;
     };
 
@@ -80,20 +82,20 @@ const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ onPhaseChange }) => {
         <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg w-full max-w-sm">
             <div className="flex justify-between items-center mb-4">
                 <div className="flex gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    <span className={phase === 'work' ? 'text-violet-400' : ''}>Work</span>
+                    <span className={phase === 'WORK' ? 'text-violet-400' : ''}>Work</span>
                     <span>/</span>
-                    <span className={phase === 'shortBreak' ? 'text-emerald-400' : ''}>Break</span>
+                    <span className={phase === 'BREAK' ? 'text-emerald-400' : ''}>Short</span>
                     <span>/</span>
-                    <span className={phase === 'longBreak' ? 'text-blue-400' : ''}>Long Break</span>
+                    <span className={phase === 'LONG_BREAK' ? 'text-blue-400' : ''}>Long</span>
                 </div>
-                <div className="text-xs text-slate-500">Cycle: {cycles % 4}/4</div>
+                <div className="text-xs text-slate-500">Cycle: {cycles % DEFAULT_POMODORO.cyclesBeforeLongBreak}/4</div>
             </div>
 
             <div className="relative mb-6 flex justify-center">
                 {/* Circular Progress (Simple CSS implementation) */}
                 <div className="w-48 h-48 rounded-full border-4 border-slate-700 flex items-center justify-center relative shadow-[0_0_20px_rgba(0,0,0,0.3)]">
                     <div
-                        className={`absolute inset-0 rounded-full border-4 ${phase === 'work' ? 'border-violet-500' : 'border-emerald-500'} opacity-100 transition-all duration-1000`}
+                        className={`absolute inset-0 rounded-full border-4 ${phase === 'WORK' ? 'border-violet-500' : 'border-emerald-500'} opacity-100 transition-all duration-1000`}
                         style={{ clipPath: `inset(0 0 ${100 - getProgress()}% 0)` }} // Simple clipping for progress effect
                     ></div>
                     <div className="z-10 text-center">
@@ -101,7 +103,7 @@ const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ onPhaseChange }) => {
                             {formatTime(timeLeft)}
                         </div>
                         <div className="text-sm mt-1 text-slate-400 font-medium uppercase">
-                            {phase === 'work' ? 'Focus Time' : 'Take a Break'}
+                            {phase === 'WORK' ? 'Focus Time' : 'Time to Rest'}
                         </div>
                     </div>
                 </div>
@@ -119,16 +121,22 @@ const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ onPhaseChange }) => {
 
             <div className="mt-4 flex justify-center gap-2">
                 <button
-                    onClick={() => { setPhase('shortBreak'); setTimeLeft(SHORT_BREAK); setIsActive(false); }}
-                    className="p-2 rounded-lg hover:bg-slate-700 text-slate-400 text-xs flex flex-col items-center gap-1"
+                    onClick={() => { setPhase('WORK'); setTimeLeft(WORK_TIME); setIsActive(false); }}
+                    className={`p-2 rounded-lg hover:bg-slate-700 text-xs flex flex-col items-center gap-1 ${phase === 'WORK' ? 'text-violet-400 bg-slate-700/50' : 'text-slate-400'}`}
+                >
+                    <Briefcase size={16} /> Work
+                </button>
+                <button
+                    onClick={() => { setPhase('BREAK'); setTimeLeft(SHORT_BREAK); setIsActive(false); }}
+                    className={`p-2 rounded-lg hover:bg-slate-700 text-xs flex flex-col items-center gap-1 ${phase === 'BREAK' ? 'text-emerald-400 bg-slate-700/50' : 'text-slate-400'}`}
                 >
                     <Coffee size={16} /> Short
                 </button>
                 <button
-                    onClick={() => { setPhase('work'); setTimeLeft(WORK_TIME); setIsActive(false); }}
-                    className="p-2 rounded-lg hover:bg-slate-700 text-slate-400 text-xs flex flex-col items-center gap-1"
+                    onClick={() => { setPhase('LONG_BREAK'); setTimeLeft(LONG_BREAK); setIsActive(false); }}
+                    className={`p-2 rounded-lg hover:bg-slate-700 text-xs flex flex-col items-center gap-1 ${phase === 'LONG_BREAK' ? 'text-blue-400 bg-slate-700/50' : 'text-slate-400'}`}
                 >
-                    <Briefcase size={16} /> Work
+                    <Armchair size={16} /> Long
                 </button>
             </div>
         </div>
